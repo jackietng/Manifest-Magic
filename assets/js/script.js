@@ -1,5 +1,5 @@
 // === DOM ELEMENTS ===
-const moodBoardEl = document.querySelector('#mood-board');
+const moodBoardEl = document.querySelector('#mood-board'); // This is the code "grabbing" the buttons and input fields from HTML so JavaScript can interact with them. 
 const addImageBtn = document.querySelector('#add-image');
 const imageUrlInput = document.querySelector('#image-url');
 const addTextBtn = document.querySelector('#add-text');
@@ -7,7 +7,7 @@ const textInput = document.querySelector('#text-input');
 const clearBtn = document.querySelector('#clear-all');
 
 // === STATE ===
-// We will use a temporary storage object to hold the images and texts added to the mood board.
+// This is the app's "memory" while it is running - tracking what's on the board and what's currently being dragged. 
 let moodBoardItems = {
   images: [],
   texts: [],

@@ -1,0 +1,133 @@
+// src/server.js
+import express from "express";
+import cors from "cors";
+import { createClient } from "@supabase/supabase-js";
+import dotenv from "dotenv";
+import fetch from "node-fetch";
+import nodemailer from "nodemailer";
+import { fileURLToPath } from "url";
+import { dirname, join } from "path";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
+const envPath = join(__dirname, "../.env");
+console.log("Looking for .env at:", envPath);
+dotenv.config({ path: envPath });
+console.log("SUPABASE_URL:", process.env.SUPABASE_URL ? "✅ Found" : "❌ Missing");
+console.log("SUPABASE_SERVICE_KEY:", process.env.SUPABASE_SERVICE_KEY ? "✅ Found" : "❌ Missing");
+console.log("GMAIL_USER:", process.env.GMAIL_USER ? "✅ Found" : "❌ Missing");
+console.log("GMAIL_APP_PASSWORD:", process.env.GMAIL_APP_PASSWORD ? "✅ Found" : "❌ Missing");
+console.log("CONTACT_RECEIVER:", process.env.CONTACT_RECEIVER ? "✅ Found" : "❌ Missing");
+
+const app = express();
+app.use(cors());
+app.use(express.json());
+
+const supabase = createClient(
+  process.env.SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_KEY
+);
+
+// Nodemailer transporter
+const transporter = nodemailer.createTransport({
+  service: "gmail",
+  auth: {
+    user: process.env.GMAIL_USER,
+    pass: process.env.GMAIL_APP_PASSWORD,
+  },
+});
+
+// Verify transporter connection on startup
+transporter.verify((error, success) => {
+  if (error) {
+    console.error("❌ Email transporter error:", error);
+  } else {
+    console.log("✅ Email transporter ready");
+  }
+});
+
+// Image proxy route
+app.get("/proxy-image", async (req, res) => {
+  const { url } = req.query;
+
+  if (!url) {
+    return res.status(400).json({ error: "No URL provided" });
+  }
+
+  try {
+    const response = await fetch(url, {
+      headers: {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        "Accept": "image/webp,image/apng,image/*,*/*;q=0.8",
+        "Accept-Language": "en-US,en;q=0.9",
+        "Referer": "https://www.google.com/",
+      },
+    });
+
+    if (!response.ok) {
+      return res.status(response.status).json({ error: "Failed to fetch image" });
+    }
+
+    const contentType = response.headers.get("content-type") || "image/jpeg";
+    const buffer = await response.arrayBuffer();
+
+    res.set("Content-Type", contentType);
+    res.set("Cache-Control", "public, max-age=86400");
+    res.set("Access-Control-Allow-Origin", "*");
+    res.send(Buffer.from(buffer));
+  } catch (err) {
+    console.error("Proxy error:", err);
+    res.status(500).json({ error: "Proxy failed" });
+  }
+});
+
+// Contact form route
+app.post("/contact", async (req, res) => {
+  const { name, email, message } = req.body;
+
+  console.log("📧 Contact form received:", { name, email, message });
+
+  if (!name || !email || !message) {
+    console.log("❌ Missing fields");
+    return res.status(400).json({ success: false, error: "All fields are required" });
+  }
+
+  try {
+    const info = await transporter.sendMail({
+      from: `"Manifest Magic" <${process.env.GMAIL_USER}>`,
+      to: process.env.CONTACT_RECEIVER,
+      replyTo: email,
+      subject: `New Contact Form Message from ${name}`,
+      text: `Name: ${name}\nEmail: ${email}\n\nMessage:\n${message}`,
+    });
+
+    console.log("✅ Email sent successfully:", info.messageId);
+    res.json({ success: true });
+  } catch (err) {
+    console.error("❌ Email error:", err);
+    res.status(500).json({ success: false, error: "Failed to send email" });
+  }
+});
+
+// Journal routes
+app.post("/journal", async (req, res) => {
+  const { mood, entry, user_email } = req.body;
+  const { data, error } = await supabase.from("journals").insert([
+    { mood, entry, user_email }
+  ]);
+  if (error) return res.status(400).json({ error });
+  res.status(200).json({ data });
+});
+
+app.get("/journals/:email", async (req, res) => {
+  const { email } = req.params;
+  const { data, error } = await supabase
+    .from("journals")
+    .select("*")
+    .eq("user_email", email);
+  if (error) return res.status(400).json({ error });
+  res.status(200).json({ data });
+});
+
+app.listen(5000, () => console.log("Server running on http://localhost:5000"));

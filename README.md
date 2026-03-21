@@ -1,62 +1,179 @@
-# Mini-Project: Mood Board
+# Manifest Magic ✨
 
-## Description
-This dynamic mood board appliation helps users compile images using the image URL and allows users to add text of their choice. Once images and texts have been added, users may drag the content as they please to place their inspirations as needed. 
+A full-stack manifestation and wellness application built with React, TypeScript, Supabase, and Node.js. Manifest Magic combines mood tracking, journaling, and a dynamic vision board into one sacred space for intentional living and personal growth.
 
-## Table of Contents
-  * [Description](#description)
-  * [User Story](#user-story)
-  * [Specifications](#specifications)
+---
 
+## 🌙 Live Demo
+Coming soon
 
-## User Story
+---
 
-The completed application should meet the following criteria:
+## ✨ Features
 
-* As a user, I want to add an image of my choice using a URL.
+### Vision Board
+- Create a personalized mood board by adding images via URL or uploading directly from your device
+- Drag, resize, and arrange images and text freely on the canvas
+- Save boards to your account and reload them anytime
+- Export your board as a JPEG to save or share
 
-  * For example:
+### Mood Tracker
+- Log your daily mood from 7 emotional states with emoji indicators
+- Visualize your mood patterns over time with an interactive line graph
+- Track emotional trends to better understand yourself
 
-  ```md
-  https://static.bc-edx.com/coding/full-stack/04-Web-APIs/assets/100-m4-mini.png
-  ```
+### Journal
+- Receive a daily writing prompt to inspire reflection
+- Save journal entries to your account
+- Preview, edit, and delete past entries from your journal history
 
-* As a user, I want to drop that image into the mood board.
+### Authentication
+- Secure signup and login with Supabase Auth
+- Protected dashboard accessible only to logged in users
+- User profiles auto-created on signup
 
-* As a user, I want to add some text to the mood board.
+### UI/UX
+- Light and dark mode toggle with smooth transitions
+- Fully responsive sidebar navigation
+- Color scheme rooted in soft purples, lavender, and gold
+- Custom crystal ball logo matching the app's spiritual aesthetic
 
-* As a user, I want drag that text into the mood board.
+---
 
-* As a user, I want to see the image or text being dragged as I move it into the mood board.
+## 🛠️ Tech Stack
 
-* As a user, I want my mood board to be saved in local storage.
+**Frontend:**
+- React 19 + TypeScript
+- Vite
+- Tailwind CSS v4
+- Recharts
+- React Router DOM
+- Framer Motion
+- react-rnd
 
-## Specifications
+**Backend:**
+- Node.js + Express
+- Nodemailer (contact form)
+- Supabase (database, auth, storage)
 
-* When a user pastes an image URL into the input field and clicks the "Add Image" button, the image should be draggable.
+**Database:**
+- Supabase (PostgreSQL)
+- Row Level Security policies
+- Supabase Storage for image uploads
 
-* When a user clicks a draggable element on to the mood board, the element should be appended to the mood board in the position of the mouse.
+---
 
-* When a user enters text into the input field and clicks the "Add Text" button, the text should be draggable.
+## 🗄️ Database Schema
+```sql
+profiles        -- Auto-created on signup, linked to auth.users
+mood_logs       -- Mood entries per user with timestamps
+journals        -- Journal entries with title and content
+moodboards      -- Saved board metadata per user
+moodboard_items -- Individual items on each board (images and text)
+```
 
-* When a user clicks the draggable element on to the mood board, the element should be appended to the mood board in the position of the mouse.
+---
 
-* When a user refreshes or returns to the browser page, the mood board should persist.
+## 🚀 Getting Started
 
-* When a user clicks the "Clear All" button, the mood board should be cleared and the local storage should be cleared.
+### Prerequisites
+- Node.js v18+
+- A Supabase account
+- A Gmail account with App Password enabled
 
-## 💡 Notes
+### Installation
 
-Refer to the documentation:
+1. Clone the repository:
+```bash
+git clone https://github.com/jackietng/Mood-Board.git
+cd Mood-Board
+```
 
-* [MDN Web Docs on addEventListener()](https://developer.mozilla.org/en-US/docs/Web/API/EventTarget/addEventListener)
+2. Install client dependencies:
+```bash
+cd client && npm install
+```
 
-* [MDN Web Docs on Array](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array)
+3. Install server dependencies:
+```bash
+cd ../server && npm install
+```
 
-* [MDN Web Docs on loops and iteration](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Loops_and_iteration)
+4. Set up your environment variables:
 
-* [MDN Web Docs on MouseEvent](https://developer.mozilla.org/en-US/docs/Web/API/MouseEvent)
+**`client/.env`:**
+```
+VITE_SUPABASE_URL=your_supabase_url
+VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
+VITE_PROXY_URL=http://localhost:5000
+```
 
-* [MDN Web Docs on getBoundingClientRect()](https://developer.mozilla.org/en-US/docs/Web/API/Element/getBoundingClientRect)
+**`server/.env`:**
+```
+SUPABASE_URL=your_supabase_url
+SUPABASE_SERVICE_KEY=your_supabase_service_key
+GMAIL_USER=your.email@gmail.com
+GMAIL_APP_PASSWORD=your_app_password
+CONTACT_RECEIVER=your.email@gmail.com
+```
 
-* [MDN Web Docs on localStorage](https://developer.mozilla.org/en-US/docs/Web/API/Window/localStorage)
+5. Start the development servers:
+```bash
+# In one terminal - start the client
+cd client && npm run dev
+
+# In another terminal - start the server
+cd server && npm run dev
+```
+
+6. Open your browser and navigate to `http://localhost:5173`
+
+---
+
+## 📁 Project Structure
+```
+mood-board/
+├── client/                  # React frontend
+│   ├── public/
+│   │   └── images/          # Background images for light/dark mode
+│   └── src/
+│       ├── assets/          # Logo and static images
+│       ├── components/
+│       │   ├── common/      # NavBar, Footer, ThemeToggle, Button
+│       │   ├── dashboard/   # MoodLogger, MoodGraph, JournalPrompt, JournalHistory
+│       │   └── moodboard/   # DynamicMoodBoard, MoodItem, MoodInput
+│       ├── context/         # AuthContext, ThemeContext, MoodContext
+│       ├── hooks/           # useUserMoods
+│       ├── lib/             # Supabase client
+│       ├── pages/           # Home, About, Contact, Dashboard, Login, Signup
+│       └── routes/          # Route definitions
+└── server/                  # Express backend
+    └── src/
+        └── server.js        # API routes, image proxy, contact form
+```
+
+---
+
+## 🔒 Security
+- All environment variables are excluded from version control via `.gitignore`
+- Supabase Row Level Security (RLS) enforces user-level data access
+- Authentication handled securely via Supabase Auth
+- Image proxy prevents CORS issues with external image URLs
+
+---
+
+## 🌸 About
+
+> There is something powerful about writing down what you want. About seeing it. About believing it before it exists.
+
+Manifest Magic was built as a passion project rooted in intentional living, spiritual empowerment, and the belief that your inner world shapes your outer one. Here, magic meets mindfulness.
+
+---
+
+## 📬 Contact
+Have a question or want to connect? Use the contact form on the app or reach out via GitHub.
+
+---
+
+## 📄 License
+This project is open source and available under the [MIT License](LICENSE).

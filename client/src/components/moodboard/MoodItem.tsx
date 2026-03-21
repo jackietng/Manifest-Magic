@@ -1,6 +1,6 @@
 //src/components/moodboard/MoodItem.tsx
 import { Rnd } from "react-rnd";
-import { useState } from "react";
+import { useState, useRef } from "react";
 
 export type MoodItemType = {
   id: string;
@@ -10,32 +10,60 @@ export type MoodItemType = {
   y: number;
   width: number;
   height: number;
+  zIndex: number;
 };
 
 export default function MoodItem({
   item,
   onChange,
   onRemove,
+  onBringToFront,
+  onSendToBack,
 }: {
   item: MoodItemType;
   onChange: (id: string, changes: Partial<MoodItemType>) => void;
   onRemove: (id: string) => void;
+  onBringToFront: (id: string) => void;
+  onSendToBack: (id: string) => void;
 }) {
   const [pos, setPos] = useState({ x: item.x, y: item.y });
   const [size, setSize] = useState({ width: item.width, height: item.height });
+  const [hovered, setHovered] = useState(false);
+  const leaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Calculate aspect ratio from original dimensions
   const aspectRatio = item.width / item.height;
+  const fontSize = Math.max(12, Math.min(size.width, size.height) * 0.14);
+
+  const handleMouseEnter = () => {
+    if (leaveTimer.current) clearTimeout(leaveTimer.current);
+    setHovered(true);
+  };
+
+  const handleMouseLeave = () => {
+    leaveTimer.current = setTimeout(() => setHovered(false), 150);
+  };
+
+  const handleStyle = {
+    width: "12px",
+    height: "12px",
+    backgroundColor: hovered ? "rgba(156, 163, 175, 0.9)" : "transparent",
+    borderRadius: "3px",
+    zIndex: 10,
+    transition: "background-color 0.15s ease",
+  };
 
   return (
     <>
+      {/* Delete button */}
       <button
+        onMouseEnter={handleMouseEnter}
+        onMouseLeave={handleMouseLeave}
         onClick={() => onRemove(item.id)}
         style={{
           position: "absolute",
           left: pos.x + size.width - 9,
           top: pos.y - 9,
-          zIndex: 30,
+          zIndex: item.zIndex + 100,
           background: "#ef4444",
           color: "white",
           border: "none",
@@ -48,10 +76,64 @@ export default function MoodItem({
           alignItems: "center",
           justifyContent: "center",
           lineHeight: 1,
+          opacity: hovered ? 1 : 0,
+          transition: "opacity 0.15s ease",
+          pointerEvents: hovered ? "all" : "none",
         }}
       >
         ×
       </button>
+
+      {/* Bring to front / send to back buttons */}
+      <div
+        onMouseEnter={handleMouseEnter}
+        onMouseLeave={handleMouseLeave}
+        style={{
+          position: "absolute",
+          left: pos.x,
+          top: pos.y - 22,
+          zIndex: item.zIndex + 100,
+          display: "flex",
+          gap: "3px",
+          opacity: hovered ? 1 : 0,
+          transition: "opacity 0.15s ease",
+          pointerEvents: hovered ? "all" : "none",
+        }}
+      >
+        <button
+          onClick={() => onBringToFront(item.id)}
+          title="Bring to front"
+          style={{
+            background: "rgba(84, 70, 131, 0.85)",
+            color: "white",
+            border: "none",
+            borderRadius: "4px",
+            padding: "2px 6px",
+            fontSize: "10px",
+            cursor: "pointer",
+            lineHeight: 1.4,
+          }}
+        >
+          ↑ Front
+        </button>
+        <button
+          onClick={() => onSendToBack(item.id)}
+          title="Send to back"
+          style={{
+            background: "rgba(164, 133, 180, 0.85)",
+            color: "white",
+            border: "none",
+            borderRadius: "4px",
+            padding: "2px 6px",
+            fontSize: "10px",
+            cursor: "pointer",
+            lineHeight: 1.4,
+          }}
+        >
+          ↓ Back
+        </button>
+      </div>
+
       <Rnd
         default={{
           x: item.x,
@@ -72,38 +154,19 @@ export default function MoodItem({
           right: false,
         }}
         resizeHandleStyles={{
-          topLeft: {
-            width: "12px",
-            height: "12px",
-            backgroundColor: "rgba(156, 163, 175, 0.9)",
-            borderRadius: "3px",
-            top: "0px",
-            left: "0px",
-            zIndex: 10,
-          },
-          bottomLeft: {
-            width: "12px",
-            height: "12px",
-            backgroundColor: "rgba(156, 163, 175, 0.9)",
-            borderRadius: "3px",
-            bottom: "0px",
-            left: "0px",
-            zIndex: 10,
-          },
-          bottomRight: {
-            width: "12px",
-            height: "12px",
-            backgroundColor: "rgba(156, 163, 175, 0.9)",
-            borderRadius: "3px",
-            bottom: "0px",
-            right: "0px",
-            zIndex: 10,
-          },
+          topLeft: { ...handleStyle, top: "0px", left: "0px" },
+          bottomLeft: { ...handleStyle, bottom: "0px", left: "0px" },
+          bottomRight: { ...handleStyle, bottom: "0px", right: "0px" },
         }}
         style={{
           position: "absolute",
-          overflow: "hidden",
+          overflow: item.type === "text" ? "visible" : "hidden",
+          zIndex: item.zIndex,
+          outline: hovered ? "1px dashed rgba(156, 163, 175, 0.6)" : "none",
+          transition: "outline 0.15s ease",
         }}
+        onMouseEnter={handleMouseEnter}
+        onMouseLeave={handleMouseLeave}
         onDrag={(_, d) => {
           setPos({ x: d.x, y: d.y });
         }}
@@ -122,7 +185,6 @@ export default function MoodItem({
           let newWidth = parseFloat(ref.style.width);
           let newHeight = parseFloat(ref.style.height);
 
-          // For images manually enforce aspect ratio based on which dimension changed most
           if (item.type === "image") {
             const widthChanged = Math.abs(newWidth - size.width);
             const heightChanged = Math.abs(newHeight - size.height);
@@ -166,7 +228,12 @@ export default function MoodItem({
               alignItems: "center",
               justifyContent: "center",
               fontWeight: "bold",
-              fontSize: "1rem",
+              fontSize: `${fontSize}px`,
+              padding: "8px",
+              boxSizing: "border-box",
+              wordBreak: "break-word",
+              textAlign: "center",
+              lineHeight: 1.3,
             }}
           >
             {item.content}

@@ -6,6 +6,7 @@ import { supabase } from "../../lib/supabaseClient";
 import MoodItem from "../../components/moodboard/MoodItem";
 import html2canvas from "html2canvas";
 import { useTheme } from "../../context/ThemeContext";
+import { useMood } from "../../context/MoodContext";
 
 export type MoodItemType = {
   id: string;
@@ -15,6 +16,7 @@ export type MoodItemType = {
   y: number;
   width: number;
   height: number;
+  zIndex: number;
 };
 
 const PROXY_URL = import.meta.env.VITE_PROXY_URL || "http://localhost:5000";
@@ -52,18 +54,20 @@ export default function DynamicMoodBoard() {
   const [imageUrl, setImageUrl] = useState("");
   const [textInput, setTextInput] = useState("");
   const [boardName, setBoardName] = useState("My Mood Board");
+  const [boardMood, setBoardMood] = useState("");
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [uploading, setUploading] = useState(false);
-  const [exporting, setExporting] = useState(false);
-  const [boardLoading, setBoardLoading] = useState(false); // #8
-  const [boardError, setBoardError] = useState(""); // #2
+  const [downloading, setDownloading] = useState(false);
+  const [boardLoading, setBoardLoading] = useState(false);
+  const [boardError, setBoardError] = useState("");
   const boardRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const boardId = searchParams.get("board");
   const { theme } = useTheme();
+  const { mood } = useMood();
   const hintColor = theme === "dark" ? "var(--snow)" : "var(--primary)";
   const inputStyle = {
     backgroundColor: theme === "dark" ? "#2a223a" : "var(--snow)",
@@ -89,7 +93,7 @@ export default function DynamicMoodBoard() {
 
       const { data: board, error: boardError } = await supabase
         .from("moodboards")
-        .select("name")
+        .select("name, mood")
         .eq("id", boardId)
         .single();
 
@@ -100,6 +104,7 @@ export default function DynamicMoodBoard() {
       }
 
       setBoardName(board.name);
+      setBoardMood(board.mood || "");
 
       const { data: boardItems, error: itemsError } = await supabase
         .from("moodboard_items")
@@ -112,7 +117,7 @@ export default function DynamicMoodBoard() {
         return;
       }
 
-      const loadedItems: MoodItemType[] = (boardItems || []).map((item) => ({
+      const loadedItems: MoodItemType[] = (boardItems || []).map((item, index) => ({
         id: uuid(),
         type: item.type,
         content: item.content,
@@ -120,6 +125,7 @@ export default function DynamicMoodBoard() {
         y: item.y,
         width: item.width,
         height: item.height,
+        zIndex: item.zIndex || index + 1,
       }));
 
       setItems((prev) => prev.length > 0 ? prev : loadedItems);
@@ -175,6 +181,7 @@ export default function DynamicMoodBoard() {
           y: 100,
           width,
           height,
+          zIndex: items.length + 1,
         };
 
         setItems((prev) => [...prev, newItem]);
@@ -193,11 +200,12 @@ export default function DynamicMoodBoard() {
         y: 100,
         width: 200,
         height: 60,
+        zIndex: items.length + 1,
       };
       setItems((prev) => [...prev, newItem]);
       setTextInput("");
     }
-  }, []);
+  }, [items.length]);
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -240,20 +248,44 @@ export default function DynamicMoodBoard() {
     setItems((prev) => prev.filter((item) => item.id !== id));
   };
 
+  const bringToFront = (id: string) => {
+    const maxZ = Math.max(...items.map((item) => item.zIndex));
+    setItems((prev) =>
+      prev.map((item) =>
+        item.id === id ? { ...item, zIndex: maxZ + 1 } : item
+      )
+    );
+  };
+
+  const sendToBack = (id: string) => {
+    setItems((prev) => {
+      const minZ = Math.min(...prev.map((item) => item.zIndex));
+      const updated = prev.map((item) =>
+        item.id === id ? { ...item, zIndex: minZ - 1 } : item
+      );
+      const newMin = Math.min(...updated.map((item) => item.zIndex));
+      if (newMin < 1) {
+        const offset = 1 - newMin;
+        return updated.map((item) => ({ ...item, zIndex: item.zIndex + offset }));
+      }
+      return updated;
+    });
+  };
+
   const clearBoard = () => {
     if (confirm("Clear the entire board?")) {
       setItems([]);
     }
   };
 
-  const handleExport = async () => {
+  const handleDownload = async () => {
     if (!boardRef.current) return;
     if (items.length === 0) {
-      alert("Add some items to your board before exporting!");
+      alert("Add some items to your board before downloading!");
       return;
     }
 
-    setExporting(true);
+    setDownloading(true);
 
     try {
       const itemsWithBase64 = await Promise.all(
@@ -279,7 +311,9 @@ export default function DynamicMoodBoard() {
       offscreen.style.backgroundColor = theme === "dark" ? "#2a223a" : "#ffffff";
       offscreen.style.overflow = "hidden";
 
-      itemsWithBase64.forEach((item) => {
+      const sortedItems = [...itemsWithBase64].sort((a, b) => a.zIndex - b.zIndex);
+
+      sortedItems.forEach((item) => {
         const el = document.createElement("div");
         el.style.position = "absolute";
         el.style.left = `${item.x}px`;
@@ -287,6 +321,7 @@ export default function DynamicMoodBoard() {
         el.style.width = `${item.width}px`;
         el.style.height = `${item.height}px`;
         el.style.overflow = "hidden";
+        el.style.zIndex = String(item.zIndex);
 
         if (item.type === "image") {
           const img = document.createElement("img");
@@ -326,11 +361,11 @@ export default function DynamicMoodBoard() {
       link.href = canvas.toDataURL("image/jpeg", 0.9);
       link.click();
     } catch (err) {
-      console.error("Export failed:", err);
-      alert("Export failed. Please try again.");
+      console.error("Download failed:", err);
+      alert("Download failed. Please try again.");
     }
 
-    setExporting(false);
+    setDownloading(false);
   };
 
   const handleSave = async () => {
@@ -352,7 +387,7 @@ export default function DynamicMoodBoard() {
 
     const { data: board, error: boardError } = await supabase
       .from("moodboards")
-      .insert([{ user_id: user.id, name: boardName }])
+      .insert([{ user_id: user.id, name: boardName, mood: mood || "" }])
       .select()
       .single();
 
@@ -371,6 +406,7 @@ export default function DynamicMoodBoard() {
       y: item.y,
       width: item.width,
       height: item.height,
+      zIndex: item.zIndex,
     }));
 
     const { error: itemError } = await supabase
@@ -417,6 +453,23 @@ export default function DynamicMoodBoard() {
               className="p-2 border rounded-xl w-full focus:outline-none focus:ring-2 focus:ring-[var(--violet)]"
               style={inputStyle}
             />
+
+            {/* Mood subtitle */}
+            {(mood || boardMood) && (
+              <p
+                className="text-center text-md italic"
+                style={{ color: theme === "dark" ? "var(--snow)" : "var(--primary)" }}
+              >
+                Today you were feeling{" "}
+                <span
+                  className="font-semibold italic"
+                  style={{ color: theme === "dark" ? "var(--snow)" : "var(--primary)" }}
+                >
+                  {mood || boardMood}
+                </span>{" "}
+              </p>
+            )}
+
             <div className="flex gap-2 flex-wrap">
               <input
                 placeholder="Enter Text"
@@ -467,11 +520,14 @@ export default function DynamicMoodBoard() {
                 {uploading ? "Uploading..." : "Upload Image from Device"}
               </button>
               <span className="text-sm" style={{ color: hintColor }}>
-                Uploaded images work best for JPEG export
+                Uploaded images work best for downloading
               </span>
             </div>
             {saved && (
-              <p className="text-center" style={{ color: "var(--primary)" }}>
+              <p
+                className="text-center"
+                style={{ color: theme === "dark" ? "var(--lavender)" : "var(--primary)" }}
+              >
                 Board saved successfully!
               </p>
             )}
@@ -498,6 +554,8 @@ export default function DynamicMoodBoard() {
                 item={item}
                 onChange={updateItem}
                 onRemove={removeItem}
+                onBringToFront={bringToFront}
+                onSendToBack={sendToBack}
               />
             ))}
           </div>
@@ -519,12 +577,12 @@ export default function DynamicMoodBoard() {
               Clear Board
             </button>
             <button
-              onClick={handleExport}
-              disabled={exporting}
+              onClick={handleDownload}
+              disabled={downloading}
               className={btnBase}
               style={{ backgroundColor: "var(--rose)" }}
             >
-              {exporting ? "Exporting..." : "Export"}
+              {downloading ? "Downloading..." : "Download"}
             </button>
           </div>
         </>

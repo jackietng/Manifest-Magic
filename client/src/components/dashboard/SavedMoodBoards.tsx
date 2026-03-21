@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { supabase } from "../../lib/supabaseClient";
 import { useNavigate } from "react-router-dom";
 import html2canvas from "html2canvas";
+import { useTheme } from "../../context/ThemeContext";
 
 type MoodBoard = {
   id: string;
@@ -24,12 +25,14 @@ type PreviewBoard = {
   items: MoodBoardItem[];
 };
 
+const PROXY_URL = import.meta.env.VITE_PROXY_URL || "http://localhost:5000";
+
 const toBase64 = (url: string): Promise<string> => {
   return new Promise((resolve) => {
     const isSupabaseImage = url.includes("supabase.co");
     const proxyUrl = isSupabaseImage
       ? url
-      : `http://localhost:5000/proxy-image?url=${encodeURIComponent(url)}`;
+      : `${PROXY_URL}/proxy-image?url=${encodeURIComponent(url)}`;
 
     const img = new Image();
     img.crossOrigin = "anonymous";
@@ -57,6 +60,21 @@ export default function SavedMoodBoards() {
   const [exporting, setExporting] = useState(false);
   const previewRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
+  const { theme } = useTheme();
+
+  const isDark = theme === "dark";
+  const textColor = isDark ? "var(--snow)" : "var(--primary)";
+  const mutedColor = isDark ? "var(--lavender)" : "var(--orchid)";
+  const cardStyle = {
+    backgroundColor: isDark ? "#2a223a" : "var(--snow)",
+    color: textColor,
+    borderColor: isDark ? "var(--violet)" : "var(--plum)",
+  };
+  const modalStyle = {
+    backgroundColor: isDark ? "#1a1428" : "#ffffff",
+    color: textColor,
+  };
+  const btnBase = "px-3 py-1 text-white rounded-lg text-sm hover:opacity-80 transition-opacity";
 
   useEffect(() => {
     const fetchBoards = async () => {
@@ -119,7 +137,7 @@ export default function SavedMoodBoards() {
       offscreen.style.left = "-99999px";
       offscreen.style.width = `${dimensions.width}px`;
       offscreen.style.height = `${dimensions.height}px`;
-      offscreen.style.backgroundColor = "#ffffff";
+      offscreen.style.backgroundColor = isDark ? "#2a223a" : "#ffffff";
       offscreen.style.overflow = "hidden";
 
       preview.items.forEach((item) => {
@@ -156,7 +174,7 @@ export default function SavedMoodBoards() {
       const canvas = await html2canvas(offscreen, {
         useCORS: true,
         allowTaint: true,
-        backgroundColor: "#ffffff",
+        backgroundColor: isDark ? "#2a223a" : "#ffffff",
         width: dimensions.width,
         height: dimensions.height,
         scale: 1,
@@ -190,18 +208,25 @@ export default function SavedMoodBoards() {
     }
   };
 
-  if (loading) return <p>Loading saved boards...</p>;
+  if (loading) return (
+    <p className="text-center" style={{ color: mutedColor }}>
+      Loading saved boards...
+    </p>
+  );
 
   const boardDimensions = preview ? getBoardDimensions(preview.items) : null;
 
   return (
     <div className="p-6 rounded-2xl">
-      <h2 className="text-xl font-semibold mb-4 text-center text-gray-900 dark:text-white">
+      <h2
+        className="text-xl font-semibold mb-4 text-center"
+        style={{ color: textColor }}
+      >
         Saved Mood Boards
       </h2>
 
       {boards.length === 0 ? (
-        <p className="text-center text-gray-500">
+        <p className="text-center" style={{ color: mutedColor }}>
           No saved boards yet. Create one on the mood board page!
         </p>
       ) : (
@@ -210,29 +235,35 @@ export default function SavedMoodBoards() {
             <li
               key={board.id}
               className="flex items-center justify-between p-3 border rounded-xl"
+              style={cardStyle}
             >
               <div>
-                <p className="font-medium">{board.name}</p>
-                <p className="text-sm text-gray-500">
+                <p className="font-medium" style={{ color: textColor }}>
+                  {board.name}
+                </p>
+                <p className="text-sm" style={{ color: mutedColor }}>
                   {new Date(board.created_at).toLocaleDateString()}
                 </p>
               </div>
               <div className="flex gap-2">
                 <button
                   onClick={() => handlePreview(board)}
-                  className="px-3 py-1 bg-pink-500 text-white rounded-lg text-sm hover:bg-pink-600"
+                  className={btnBase}
+                  style={{ backgroundColor: "var(--rose)" }}
                 >
                   Preview
                 </button>
                 <button
                   onClick={() => navigate(`/moodboard?board=${board.id}`)}
-                  className="px-3 py-1 bg-indigo-600 text-white rounded-lg text-sm hover:bg-indigo-700"
+                  className={btnBase}
+                  style={{ backgroundColor: "var(--primary)" }}
                 >
                   Open
                 </button>
                 <button
                   onClick={() => handleDelete(board.id)}
-                  className="px-3 py-1 bg-red-500 text-white rounded-lg text-sm hover:bg-red-600"
+                  className={btnBase}
+                  style={{ backgroundColor: "var(--orchid)" }}
                 >
                   Delete
                 </button>
@@ -244,30 +275,41 @@ export default function SavedMoodBoards() {
 
       {preview && boardDimensions && (
         <div
-          className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50"
+          className="fixed inset-0 flex items-center justify-center z-50"
+          style={{ backgroundColor: "rgba(0,0,0,0.6)" }}
           onClick={() => setPreview(null)}
         >
           <div
-            className="bg-white rounded-2xl shadow-xl p-4 w-[90vw] max-w-4xl max-h-[90vh] flex flex-col"
+            className="rounded-2xl shadow-xl p-4 w-[90vw] max-w-4xl max-h-[90vh] flex flex-col"
+            style={modalStyle}
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex justify-between items-center mb-3">
-              <h3 className="text-lg font-semibold">{preview.board.name}</h3>
+              <h3
+                className="text-lg font-semibold"
+                style={{ color: textColor }}
+              >
+                {preview.board.name}
+              </h3>
               <button
                 onClick={() => setPreview(null)}
-                className="text-gray-500 hover:text-gray-700 text-xl font-bold"
+                className="text-xl font-bold hover:opacity-60 transition-opacity"
+                style={{ color: textColor }}
               >
                 ×
               </button>
             </div>
-            <div className="overflow-auto flex-1 rounded-xl bg-gray-100">
+            <div
+              className="overflow-auto flex-1 rounded-xl"
+              style={{ backgroundColor: isDark ? "#2a223a" : "#f3f4f6" }}
+            >
               <div
                 ref={previewRef}
                 style={{
                   position: "relative",
                   width: boardDimensions.width,
                   height: boardDimensions.height,
-                  backgroundColor: "#ffffff",
+                  backgroundColor: isDark ? "#2a223a" : "#ffffff",
                 }}
               >
                 {preview.items.length === 0 ? (
@@ -278,7 +320,7 @@ export default function SavedMoodBoards() {
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "center",
-                      color: "#9ca3af",
+                      color: mutedColor,
                     }}
                   >
                     This board has no items.
@@ -317,6 +359,7 @@ export default function SavedMoodBoards() {
                             justifyContent: "center",
                             fontWeight: "bold",
                             fontSize: "1rem",
+                            color: textColor,
                           }}
                         >
                           {item.content}
@@ -331,19 +374,22 @@ export default function SavedMoodBoards() {
               <button
                 onClick={handleExport}
                 disabled={exporting}
-                className="px-4 py-2 bg-pink-500 text-white rounded-xl hover:bg-pink-600 disabled:opacity-50"
+                className="px-4 py-2 text-white rounded-xl hover:opacity-80 transition-opacity disabled:opacity-50"
+                style={{ backgroundColor: "var(--rose)" }}
               >
                 {exporting ? "Exporting..." : "Export as JPEG"}
               </button>
               <button
                 onClick={() => navigate(`/moodboard?board=${preview.board.id}`)}
-                className="px-4 py-2 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700"
+                className="px-4 py-2 text-white rounded-xl hover:opacity-80 transition-opacity"
+                style={{ backgroundColor: "var(--primary)" }}
               >
                 Open in Editor
               </button>
               <button
                 onClick={() => setPreview(null)}
-                className="px-4 py-2 bg-gray-400 text-white rounded-xl hover:bg-gray-500"
+                className="px-4 py-2 text-white rounded-xl hover:opacity-80 transition-opacity"
+                style={{ backgroundColor: "var(--orchid)" }}
               >
                 Close
               </button>

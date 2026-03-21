@@ -9,6 +9,23 @@ Coming soon
 
 ---
 
+## 📸 Screenshots
+
+### Home Page
+![Home Page](screenshots/home.png)
+
+### Dashboard
+![Dashboard](screenshots/dashboard_1.png)
+![Dashobard](screenshots/dashboard_2.png)
+
+### Mood Board
+![Mood Board](screenshots/moodboard.png)
+
+### Dark Mode
+![Dark Mode](screenshots/darkmode.png)
+
+---
+
 ## ✨ Features
 
 ### Vision Board
@@ -85,8 +102,8 @@ moodboard_items -- Individual items on each board (images and text)
 
 1. Clone the repository:
 ```bash
-git clone https://github.com/jackietng/Mood-Board.git
-cd Mood-Board
+git clone https://github.com/jackietng/Manifest-Magic.git
+cd Manifest-Magic
 ```
 
 2. Install client dependencies:

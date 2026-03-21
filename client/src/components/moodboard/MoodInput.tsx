@@ -27,7 +27,7 @@ const MoodInput = () => {
       <input
         type="text"
         placeholder="Type your mood..."
-        className="w-full px-4 py-2 border rounded-xl focus:outline-none focus:ring-2 focus:ring-[var(--violet)]"
+        className="w-full border rounded-xl focus:outline-none focus:ring-2 focus:ring-[var(--violet)]"
         value={mood}
         onChange={(e) => setMood(e.target.value)}
         style={inputStyle}

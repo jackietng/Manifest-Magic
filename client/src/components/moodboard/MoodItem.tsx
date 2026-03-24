@@ -1,6 +1,6 @@
 //src/components/moodboard/MoodItem.tsx
 import { Rnd } from "react-rnd";
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 
 export type MoodItemType = {
   id: string;
@@ -19,19 +19,29 @@ export default function MoodItem({
   onRemove,
   onBringToFront,
   onSendToBack,
+  scale = 1,
 }: {
   item: MoodItemType;
   onChange: (id: string, changes: Partial<MoodItemType>) => void;
   onRemove: (id: string) => void;
   onBringToFront: (id: string) => void;
   onSendToBack: (id: string) => void;
+  scale?: number;
 }) {
   const [pos, setPos] = useState({ x: item.x, y: item.y });
   const [size, setSize] = useState({ width: item.width, height: item.height });
   const [hovered, setHovered] = useState(false);
   const leaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isDragging = useRef(false);
+  const isResizing = useRef(false);
 
-  const aspectRatio = item.width / item.height;
+  useEffect(() => {
+    if (!isDragging.current && !isResizing.current) {
+      setPos({ x: item.x, y: item.y });
+      setSize({ width: item.width, height: item.height });
+    }
+  }, [item.x, item.y, item.width, item.height]);
+
   const fontSize = Math.max(12, Math.min(size.width, size.height) * 0.14);
 
   const handleMouseEnter = () => {
@@ -135,12 +145,8 @@ export default function MoodItem({
       </div>
 
       <Rnd
-        default={{
-          x: item.x,
-          y: item.y,
-          width: item.width,
-          height: item.height,
-        }}
+        position={{ x: pos.x, y: pos.y }}
+        size={{ width: size.width, height: size.height }}
         bounds="parent"
         lockAspectRatio={false}
         enableResizing={{
@@ -167,41 +173,52 @@ export default function MoodItem({
         }}
         onMouseEnter={handleMouseEnter}
         onMouseLeave={handleMouseLeave}
+        onDragStart={() => {
+          isDragging.current = true;
+        }}
         onDrag={(_, d) => {
-          setPos({ x: d.x, y: d.y });
+          // Divide by scale so drag distance matches visual position
+          const scaledX = d.x / scale;
+          const scaledY = d.y / scale;
+          setPos({ x: scaledX, y: scaledY });
         }}
         onDragStop={(_, d) => {
-          setPos({ x: d.x, y: d.y });
-          onChange(item.id, { x: d.x, y: d.y });
+          isDragging.current = false;
+          const scaledX = d.x / scale;
+          const scaledY = d.y / scale;
+          setPos({ x: scaledX, y: scaledY });
+          onChange(item.id, { x: scaledX, y: scaledY });
+        }}
+        onResizeStart={() => {
+          isResizing.current = true;
         }}
         onResize={(_, __, ref, _delta, position) => {
-          setPos({ x: position.x, y: position.y });
-          setSize({
-            width: parseFloat(ref.style.width),
-            height: parseFloat(ref.style.height),
-          });
-        }}
-        onResizeStop={(_, __, ref, _delta, position) => {
-          let newWidth = parseFloat(ref.style.width);
-          let newHeight = parseFloat(ref.style.height);
-
-          if (item.type === "image") {
-            const widthChanged = Math.abs(newWidth - size.width);
-            const heightChanged = Math.abs(newHeight - size.height);
-            if (widthChanged >= heightChanged) {
-              newHeight = Math.round(newWidth / aspectRatio);
-            } else {
-              newWidth = Math.round(newHeight * aspectRatio);
-            }
-          }
-
-          setPos({ x: position.x, y: position.y });
+          const newWidth = parseFloat(ref.style.width) / scale;
+          const newHeight = parseFloat(ref.style.height) / scale;
+          const scaledX = position.x / scale;
+          const scaledY = position.y / scale;
+          setPos({ x: scaledX, y: scaledY });
           setSize({ width: newWidth, height: newHeight });
           onChange(item.id, {
             width: newWidth,
             height: newHeight,
-            x: position.x,
-            y: position.y,
+            x: scaledX,
+            y: scaledY,
+          });
+        }}
+        onResizeStop={(_, __, ref, _delta, position) => {
+          isResizing.current = false;
+          const newWidth = parseFloat(ref.style.width) / scale;
+          const newHeight = parseFloat(ref.style.height) / scale;
+          const scaledX = position.x / scale;
+          const scaledY = position.y / scale;
+          setPos({ x: scaledX, y: scaledY });
+          setSize({ width: newWidth, height: newHeight });
+          onChange(item.id, {
+            width: newWidth,
+            height: newHeight,
+            x: scaledX,
+            y: scaledY,
           });
         }}
       >

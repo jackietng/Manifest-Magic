@@ -4,7 +4,6 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { v4 as uuid } from "uuid";
 import { supabase } from "../../lib/supabaseClient";
 import MoodItem from "../../components/moodboard/MoodItem";
-import html2canvas from "html2canvas";
 import { useTheme } from "../../context/ThemeContext";
 import { useMood } from "../../context/MoodContext";
 
@@ -20,6 +19,7 @@ export type MoodItemType = {
 };
 
 const PROXY_URL = import.meta.env.VITE_PROXY_URL || "http://localhost:5000";
+const BOARD_MIN_WIDTH = 600;
 
 const toBase64ViaProxy = (url: string): Promise<string> => {
   return new Promise((resolve) => {
@@ -49,11 +49,15 @@ const toBase64ViaProxy = (url: string): Promise<string> => {
 
 const btnBase = "px-4 py-2 text-white rounded-xl transition-opacity hover:opacity-80 disabled:opacity-50";
 
-export default function DynamicMoodBoard() {
+export default function DynamicMoodBoard({
+  setSidebarOpen,
+}: {
+  setSidebarOpen?: (open: boolean) => void;
+}) {
   const [items, setItems] = useState<MoodItemType[]>([]);
   const [imageUrl, setImageUrl] = useState("");
   const [textInput, setTextInput] = useState("");
-  const [boardName, setBoardName] = useState("My Mood Board");
+  const [boardName, setBoardName] = useState("");
   const [boardMood, setBoardMood] = useState("");
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -61,7 +65,12 @@ export default function DynamicMoodBoard() {
   const [downloading, setDownloading] = useState(false);
   const [boardLoading, setBoardLoading] = useState(false);
   const [boardError, setBoardError] = useState("");
+  const [boardScale, setBoardScale] = useState(1);
+  const [boardOriginalWidth, setBoardOriginalWidth] = useState<number | null>(null);
+  const [boardOriginalHeight, setBoardOriginalHeight] = useState<number | null>(null);
   const boardRef = useRef<HTMLDivElement>(null);
+  const boardWrapperRef = useRef<HTMLDivElement>(null);
+  const boardContainerRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -73,6 +82,47 @@ export default function DynamicMoodBoard() {
     backgroundColor: theme === "dark" ? "#2a223a" : "var(--snow)",
     color: theme === "dark" ? "var(--snow)" : "var(--primary)",
   };
+
+  // Helper to calculate scale fitting both width and height
+  // Uses boardContainerRef (outer div) to avoid circular dependency
+  const calculateAndSetScale = useCallback((
+    originalWidth: number | null,
+    originalHeight: number | null
+  ) => {
+    if (!boardContainerRef.current) return;
+    const containerWidth = boardContainerRef.current.offsetWidth;
+    const viewportHeight = window.innerHeight * 0.8;
+    const referenceWidth = originalWidth || BOARD_MIN_WIDTH;
+    const referenceHeight = originalHeight || viewportHeight;
+
+    const widthScale = containerWidth < referenceWidth
+      ? containerWidth / referenceWidth
+      : 1;
+    const heightScale = viewportHeight < referenceHeight
+      ? viewportHeight / referenceHeight
+      : 1;
+
+    const scale = Math.min(widthScale, heightScale);
+    setBoardScale(scale);
+  }, []);
+
+  // Handle window resize
+  useEffect(() => {
+    const handleResize = () => {
+      calculateAndSetScale(boardOriginalWidth, boardOriginalHeight);
+    };
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, [boardOriginalWidth, boardOriginalHeight, calculateAndSetScale]);
+
+  // Initial scale for fresh boards with no boardId
+  useEffect(() => {
+    if (boardId) return;
+    const rafId = requestAnimationFrame(() => {
+      calculateAndSetScale(null, null);
+    });
+    return () => cancelAnimationFrame(rafId);
+  }, [boardId, calculateAndSetScale]);
 
   useEffect(() => {
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
@@ -93,7 +143,7 @@ export default function DynamicMoodBoard() {
 
       const { data: board, error: boardError } = await supabase
         .from("moodboards")
-        .select("name, mood")
+        .select("name, mood, board_width, board_height")
         .eq("id", boardId)
         .single();
 
@@ -105,6 +155,8 @@ export default function DynamicMoodBoard() {
 
       setBoardName(board.name);
       setBoardMood(board.mood || "");
+      setBoardOriginalWidth(board.board_width || null);
+      setBoardOriginalHeight(board.board_height || null);
 
       const { data: boardItems, error: itemsError } = await supabase
         .from("moodboard_items")
@@ -130,10 +182,14 @@ export default function DynamicMoodBoard() {
 
       setItems((prev) => prev.length > 0 ? prev : loadedItems);
       setBoardLoading(false);
+
+      setTimeout(() => {
+        calculateAndSetScale(board.board_width || null, board.board_height || null);
+      }, 0);
     };
 
     loadBoard();
-  }, [boardId]);
+  }, [boardId, calculateAndSetScale]);
 
   const addItem = useCallback((type: "image" | "text", content: string) => {
     if (!content.trim()) return;
@@ -288,6 +344,17 @@ export default function DynamicMoodBoard() {
     setDownloading(true);
 
     try {
+      if (setSidebarOpen) {
+        setSidebarOpen(false);
+        await new Promise((res) => setTimeout(res, 350));
+      }
+
+      const referenceWidth = boardOriginalWidth || BOARD_MIN_WIDTH;
+      const boardHeight = boardOriginalHeight || boardRef.current.offsetHeight;
+      const boardWidth = boardScale < 1
+        ? referenceWidth
+        : boardRef.current.offsetWidth;
+
       const itemsWithBase64 = await Promise.all(
         items.map(async (item) => {
           if (item.type === "image") {
@@ -298,68 +365,72 @@ export default function DynamicMoodBoard() {
         })
       );
 
-      const boardEl = boardRef.current;
-      const boardWidth = boardEl.offsetWidth;
-      const boardHeight = boardEl.offsetHeight;
-
-      const offscreen = document.createElement("div");
-      offscreen.style.position = "fixed";
-      offscreen.style.top = "-99999px";
-      offscreen.style.left = "-99999px";
-      offscreen.style.width = `${boardWidth}px`;
-      offscreen.style.height = `${boardHeight}px`;
-      offscreen.style.backgroundColor = theme === "dark" ? "#2a223a" : "#ffffff";
-      offscreen.style.overflow = "hidden";
-
       const sortedItems = [...itemsWithBase64].sort((a, b) => a.zIndex - b.zIndex);
 
-      sortedItems.forEach((item) => {
-        const el = document.createElement("div");
-        el.style.position = "absolute";
-        el.style.left = `${item.x}px`;
-        el.style.top = `${item.y}px`;
-        el.style.width = `${item.width}px`;
-        el.style.height = `${item.height}px`;
-        el.style.overflow = "hidden";
-        el.style.zIndex = String(item.zIndex);
+      const canvas = document.createElement("canvas");
+      canvas.width = boardWidth;
+      canvas.height = boardHeight;
+      const ctx = canvas.getContext("2d");
 
+      if (!ctx) throw new Error("Could not get canvas context");
+
+      ctx.fillStyle = theme === "dark" ? "#2a223a" : "#ffffff";
+      ctx.fillRect(0, 0, boardWidth, boardHeight);
+
+      for (const item of sortedItems) {
         if (item.type === "image") {
-          const img = document.createElement("img");
-          img.src = item.content;
-          img.style.width = "100%";
-          img.style.height = "100%";
-          img.style.objectFit = "contain";
-          img.style.objectPosition = "center";
-          el.appendChild(img);
+          await new Promise<void>((resolve) => {
+            const img = new Image();
+            img.onload = () => {
+              ctx.drawImage(img, item.x, item.y, item.width, item.height);
+              resolve();
+            };
+            img.onerror = () => resolve();
+            img.src = item.content;
+          });
         } else {
-          el.style.display = "flex";
-          el.style.alignItems = "center";
-          el.style.justifyContent = "center";
-          el.style.fontWeight = "bold";
-          el.style.fontSize = "1rem";
-          el.textContent = item.content;
+          const fontSize = Math.max(12, Math.min(item.width, item.height) * 0.14);
+          ctx.font = `bold ${fontSize}px Inter, sans-serif`;
+          ctx.fillStyle = theme === "dark" ? "#f4f1f0" : "#544683";
+          ctx.textAlign = "center";
+          ctx.textBaseline = "middle";
+
+          const words = item.content.split(" ");
+          const lineHeight = fontSize * 1.3;
+          const maxWidth = item.width - 16;
+          const lines: string[] = [];
+          let currentLine = "";
+
+          for (const word of words) {
+            const testLine = currentLine ? `${currentLine} ${word}` : word;
+            const metrics = ctx.measureText(testLine);
+            if (metrics.width > maxWidth && currentLine) {
+              lines.push(currentLine);
+              currentLine = word;
+            } else {
+              currentLine = testLine;
+            }
+          }
+          if (currentLine) lines.push(currentLine);
+
+          const totalHeight = lines.length * lineHeight;
+          const startY = item.y + (item.height - totalHeight) / 2 + lineHeight / 2;
+
+          lines.forEach((line, i) => {
+            ctx.fillText(
+              line,
+              item.x + item.width / 2,
+              startY + i * lineHeight
+            );
+          });
         }
-
-        offscreen.appendChild(el);
-      });
-
-      document.body.appendChild(offscreen);
-
-      const canvas = await html2canvas(offscreen, {
-        useCORS: true,
-        allowTaint: true,
-        backgroundColor: theme === "dark" ? "#2a223a" : "#ffffff",
-        width: boardWidth,
-        height: boardHeight,
-        scale: 1,
-      });
-
-      document.body.removeChild(offscreen);
+      }
 
       const link = document.createElement("a");
       link.download = `${boardName}.jpg`;
       link.href = canvas.toDataURL("image/jpeg", 0.9);
       link.click();
+
     } catch (err) {
       console.error("Download failed:", err);
       alert("Download failed. Please try again.");
@@ -385,9 +456,16 @@ export default function DynamicMoodBoard() {
 
     setSaving(true);
 
+    const boardEl = boardRef.current;
     const { data: board, error: boardError } = await supabase
       .from("moodboards")
-      .insert([{ user_id: user.id, name: boardName, mood: mood || "" }])
+      .insert([{
+        user_id: user.id,
+        name: boardName,
+        mood: mood || "",
+        board_width: boardOriginalWidth || boardEl?.offsetWidth || 0,
+        board_height: boardOriginalHeight || boardEl?.offsetHeight || 0,
+      }])
       .select()
       .single();
 
@@ -466,7 +544,7 @@ export default function DynamicMoodBoard() {
                   style={{ color: theme === "dark" ? "var(--snow)" : "var(--primary)" }}
                 >
                   {mood || boardMood}
-                </span>{" "}
+                </span>
               </p>
             )}
 
@@ -533,31 +611,62 @@ export default function DynamicMoodBoard() {
             )}
           </div>
 
-          <div
-            ref={boardRef}
-            className="relative w-full h-[80vh] rounded-xl shadow overflow-hidden"
-            style={{
-              backgroundColor: theme === "dark" ? "#2a223a" : "var(--snow)",
-            }}
-          >
-            {items.length === 0 && (
-              <p
-                className="absolute inset-0 flex items-center justify-center"
-                style={{ color: "var(--orchid)" }}
+          {/* Outer container — measured for scale calculation */}
+          <div ref={boardContainerRef} className="w-full flex justify-center">
+            {/* Inner wrapper — sized to match scaled board exactly */}
+            <div
+              ref={boardWrapperRef}
+              className="rounded-xl shadow"
+              style={{
+                width: boardScale < 1
+                  ? `${(boardOriginalWidth || BOARD_MIN_WIDTH) * boardScale}px`
+                  : "100%",
+                height: boardOriginalHeight
+                  ? `${boardOriginalHeight * boardScale}px`
+                  : `calc(80vh * ${boardScale})`,
+                overflow: "hidden",
+                borderRadius: "0.75rem",
+              }}
+            >
+              {/* Actual board — full size, scaled via transform */}
+              <div
+                ref={boardRef}
+                className="relative"
+                style={{
+                  backgroundColor: theme === "dark" ? "#2a223a" : "var(--snow)",
+                  width: boardScale < 1
+                    ? `${boardOriginalWidth || BOARD_MIN_WIDTH}px`
+                    : "100%",
+                  height: boardOriginalHeight
+                    ? `${boardOriginalHeight}px`
+                    : "80vh",
+                  transformOrigin: "top left",
+                  transform: `scale(${boardScale})`,
+                  overflow: "hidden",
+                  borderRadius: "0.75rem",
+                }}
               >
-                Add images or text to get started!
-              </p>
-            )}
-            {items.map((item) => (
-              <MoodItem
-                key={item.id}
-                item={item}
-                onChange={updateItem}
-                onRemove={removeItem}
-                onBringToFront={bringToFront}
-                onSendToBack={sendToBack}
-              />
-            ))}
+                {items.length === 0 && (
+                  <p
+                    className="absolute inset-0 flex items-center justify-center"
+                    style={{ color: "var(--orchid)" }}
+                  >
+                    Add images or text to get started!
+                  </p>
+                )}
+                {items.map((item) => (
+                  <MoodItem
+                    key={item.id}
+                    item={item}
+                    onChange={updateItem}
+                    onRemove={removeItem}
+                    onBringToFront={bringToFront}
+                    onSendToBack={sendToBack}
+                    scale={boardScale}
+                  />
+                ))}
+              </div>
+            </div>
           </div>
 
           <div className="flex gap-2 flex-wrap mt-4 justify-center">
@@ -582,7 +691,7 @@ export default function DynamicMoodBoard() {
               className={btnBase}
               style={{ backgroundColor: "var(--rose)" }}
             >
-              {downloading ? "Downloading..." : "Download"}
+              {downloading ? "Downloading..." : "Download Board"}
             </button>
           </div>
         </>

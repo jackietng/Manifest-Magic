@@ -1,11 +1,18 @@
 //src/components/common/NavBar.tsx
 import { Link, useNavigate } from 'react-router-dom';
 import { HiMenu, HiX } from 'react-icons/hi';
-import Button from './Button';
 import { useAuth } from '../../context/AuthContext';
 import type { SVGProps } from 'react';
 import { supabase } from '../../lib/supabaseClient';
 import crystalBall from '../../assets/crystal_ball.png';
+import { useState, useEffect } from 'react';
+import { useTheme } from '../../context/ThemeContext';
+
+const AVATARS: Record<number, string> = {
+  1: "🔮", 2: "🌙", 3: "⭐", 4: "🌸", 5: "🦋",
+  6: "🌺", 7: "✨", 8: "🌿", 9: "💫", 10: "🕊️",
+  11: "🌻", 12: "☀️",
+};
 
 export function MdiCrystalBall(props: SVGProps<SVGSVGElement>) {
   return (
@@ -32,6 +39,35 @@ type NavBarProps = {
 const NavBar = ({ isOpen, setIsOpen }: NavBarProps) => {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const [displayName, setDisplayName] = useState("");
+  const [avatarId, setAvatarId] = useState<number | null>(null);
+  const { theme } = useTheme();
+  const isDark = theme === "dark";
+  const textColor = isDark ? "var(--snow)" : "var(--primary)";
+  const mutedColor = isDark ? "var(--lavender)" : "var(--orchid)";
+
+  useEffect(() => {
+    if (!user) {
+      setDisplayName("");
+      setAvatarId(null);
+      return;
+    }
+
+    const fetchProfile = async () => {
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("display_name, avatar_id")
+        .eq("id", user.id)
+        .single();
+
+      if (profile) {
+        setDisplayName(profile.display_name || "");
+        setAvatarId(profile.avatar_id || null);
+      }
+    };
+
+    fetchProfile();
+  }, [user]);
 
   const handleSignOut = async () => {
     const { error } = await supabase.auth.signOut();
@@ -43,7 +79,7 @@ const NavBar = ({ isOpen, setIsOpen }: NavBarProps) => {
     }
   };
 
-  const navLinks = ['about', 'moodboard', 'dashboard', 'contact'];
+  const navLinks = ['about', 'moodboard', 'dashboard', 'profile', 'contact'];
 
   return (
     <>
@@ -60,38 +96,51 @@ const NavBar = ({ isOpen, setIsOpen }: NavBarProps) => {
       {/* Overlay */}
       {isOpen && (
         <div
-          className="fixed inset-0 z-30"
-          style={{ backgroundColor: "transparent" }}
+          className="fixed inset-0 z-30 md:hidden"
+          style={{
+            backgroundColor: isDark ? "rgba(0,0,0,0.5)" : "rgba(255,255,255,0.5)",
+            backdropFilter: "blur(4px)",
+            WebkitBackdropFilter: "blur(4px)",
+          }}
           onClick={() => setIsOpen(false)}
         />
       )}
 
       {/* Sidebar */}
       <aside
-        className={`fixed top-0 left-0 h-full w-64 z-40 flex flex-col
+        className={`fixed top-0 left-0 h-full z-40 flex flex-col
           shadow-2xl transform transition-transform duration-300 ease-in-out
+          w-full md:w-64
           ${isOpen ? "translate-x-0" : "-translate-x-full"}`}
+        style={{
+          backgroundColor: "transparent",
+          borderRight: "none",
+        }}
       >
-{/* Crystal ball and title */}
-<Link
-  to="/"
-  className="flex flex-col items-center gap-0 mt-12"
->
-  <img
-    src={crystalBall}
-    alt="Crystal Ball"
-    className="rounded-full"
-    style={{
-      width: "200px",
-      height: "200px",
-      objectFit: "cover",
-      filter: "drop-shadow(0 4px 6px rgba(0, 0, 0, 0.2))",
-    }}
-  />
-  <span className="font-bold text-lg tracking-wide text-center -mt-4">
-    Manifest Magic
-  </span>
-</Link>
+        {/* Crystal ball and title */}
+        <Link
+          to="/"
+          className="flex flex-col items-center gap-0 mt-12 pb-4"
+          style={{ borderBottom: "1px solid rgba(255,255,255,0.15)" }}
+        >
+          <img
+            src={crystalBall}
+            alt="Crystal Ball"
+            className="rounded-full"
+            style={{
+              width: "200px",
+              height: "200px",
+              objectFit: "cover",
+              filter: "drop-shadow(0 4px 6px rgba(0, 0, 0, 0.2))",
+            }}
+          />
+          <span
+            className="font-bold text-lg tracking-wide text-center -mt-4"
+            style={{ color: textColor }}
+          >
+            Manifest Magic
+          </span>
+        </Link>
 
         {/* Nav links */}
         <nav className="flex flex-col gap-1 px-4 py-6 flex-1">
@@ -99,43 +148,105 @@ const NavBar = ({ isOpen, setIsOpen }: NavBarProps) => {
             <Link
               key={item}
               to={`/${item}`}
-              className="hover:shadow-lg px-4 py-3 rounded-xl transition duration-200 text-sm font-medium"
+              className="px-4 py-3 rounded-xl transition duration-200 text-sm font-medium flex items-center gap-2 no-underline"
+              style={{ color: textColor, textDecoration: "none" }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = "rgba(255,255,255,0.15)";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = "transparent";
+              }}
             >
+              <span style={{ fontSize: "14px" }}>✨</span>
               {item.charAt(0).toUpperCase() + item.slice(1)}
             </Link>
           ))}
         </nav>
 
         {/* Auth buttons */}
-        <div className="px-4 py-6 border-t border-[var(--blush)] flex flex-col gap-3">
+        <div
+          className="px-4 py-6 flex flex-col gap-3"
+          style={{ borderTop: "1px solid rgba(255,255,255,0.15)" }}
+        >
           {!user ? (
             <>
-              <Button
-                to="/signup"
-                onClick={() => setIsOpen(false)}
-                className="w-full shadow-lg"
+              <button
+                onClick={() => { navigate("/signup"); setIsOpen(false); }}
+                className="w-full py-2 rounded-xl text-sm font-medium transition duration-200 hover:shadow-lg"
+                style={{
+                  backgroundColor: "transparent",
+                  color: textColor,
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = "rgba(255,255,255,0.1)";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = "transparent";
+                }}
               >
                 Sign Up
-              </Button>
-              <Button
-                to="/login"
-                onClick={() => setIsOpen(false)}
-                className="w-full shadow-lg"
+              </button>
+              <button
+                onClick={() => { navigate("/login"); setIsOpen(false); }}
+                className="w-full py-2 rounded-xl text-sm font-medium transition duration-200 hover:shadow-lg"
+                style={{
+                  backgroundColor: "transparent",
+                  color: textColor,
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = "rgba(255,255,255,0.1)";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = "transparent";
+                }}
               >
                 Log In
-              </Button>
+              </button>
             </>
           ) : (
             <>
-              <p className="text-pink-100 text-xs text-center truncate px-2">
-                {user.email}
-              </p>
-              <Button
+              {/* Avatar and display name */}
+              <div
+                className="flex items-center gap-3 px-2 py-2 rounded-xl"
+                style={{ backgroundColor: "rgba(255,255,255,0.05)" }}
+              >
+                <div
+                  style={{
+                    fontSize: "1.8rem",
+                    lineHeight: 1,
+                    minWidth: "40px",
+                    textAlign: "center",
+                  }}
+                >
+                  {avatarId ? AVATARS[avatarId] : "👤"}
+                </div>
+                <div className="flex flex-col min-w-0">
+                  <p
+                    className="font-medium text-md truncate justify-center mt-6"
+                    style={{ color: textColor }}
+                  >
+                    {displayName || user.email}
+                  </p>
+                </div>
+              </div>
+
+              {/* Log out button */}
+              <button
                 onClick={handleSignOut}
-                className="w-full hover:shadow-lg"
+                className="w-full py-2 rounded-xl text-sm font-medium transition duration-200 hover:shadow-lg"
+                style={{
+                  backgroundColor: "transparent",
+                  color: textColor,
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = "rgba(255,255,255,0.1)";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = "transparent";
+                }}
               >
                 Log Out
-              </Button>
+              </button>
             </>
           )}
         </div>

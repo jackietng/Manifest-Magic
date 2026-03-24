@@ -2,13 +2,14 @@
 import { useEffect, useRef, useState } from "react";
 import { supabase } from "../../lib/supabaseClient";
 import { useNavigate } from "react-router-dom";
-import html2canvas from "html2canvas";
 import { useTheme } from "../../context/ThemeContext";
 
 type MoodBoard = {
   id: string;
   name: string;
   created_at: string;
+  board_width: number;
+  board_height: number;
 };
 
 type MoodBoardItem = {
@@ -18,6 +19,7 @@ type MoodBoardItem = {
   y: number;
   width: number;
   height: number;
+  zIndex: number;
 };
 
 type PreviewBoard = {
@@ -57,8 +59,8 @@ export default function SavedMoodBoards() {
   const [boards, setBoards] = useState<MoodBoard[]>([]);
   const [loading, setLoading] = useState(true);
   const [preview, setPreview] = useState<PreviewBoard | null>(null);
-  const [exporting, setExporting] = useState(false);
-  const previewRef = useRef<HTMLDivElement>(null);
+  const [downloading, setDownloading] = useState(false);
+  const previewRef = useRef<HTMLCanvasElement>(null);
   const navigate = useNavigate();
   const { theme } = useTheme();
 
@@ -83,7 +85,7 @@ export default function SavedMoodBoards() {
 
       const { data, error } = await supabase
         .from("moodboards")
-        .select("id, name, created_at")
+        .select("id, name, created_at, board_width, board_height")
         .eq("user_id", user.id)
         .order("created_at", { ascending: false });
 
@@ -97,7 +99,7 @@ export default function SavedMoodBoards() {
   const handlePreview = async (board: MoodBoard) => {
     const { data, error } = await supabase
       .from("moodboard_items")
-      .select("type, content, x, y, width, height")
+      .select("type, content, x, y, width, height, zIndex")
       .eq("board_id", board.id);
 
     if (!error && data) {
@@ -114,7 +116,10 @@ export default function SavedMoodBoards() {
     }
   };
 
-  const getBoardDimensions = (items: MoodBoardItem[]) => {
+  const getBoardDimensions = (board: MoodBoard, items: MoodBoardItem[]) => {
+    if (board.board_width && board.board_height) {
+      return { width: board.board_width, height: board.board_height };
+    }
     if (items.length === 0) return { width: 600, height: 400 };
     const maxX = Math.max(...items.map((item) => item.x + item.width));
     const maxY = Math.max(...items.map((item) => item.y + item.height));
@@ -124,74 +129,156 @@ export default function SavedMoodBoards() {
     };
   };
 
-  const handleExport = async () => {
+  const getPreviewScale = (boardWidth: number) => {
+    const modalWidth = window.innerWidth * 0.9 - 32;
+    return Math.min(1, modalWidth / boardWidth);
+  };
+
+  // Draw preview onto canvas whenever preview changes
+  useEffect(() => {
+    if (!preview || !previewRef.current) return;
+
+    const dimensions = getBoardDimensions(preview.board, preview.items);
+    const canvas = previewRef.current;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    ctx.fillStyle = isDark ? "#2a223a" : "#ffffff";
+    ctx.fillRect(0, 0, dimensions.width, dimensions.height);
+
+    const sortedItems = [...preview.items].sort((a, b) => a.zIndex - b.zIndex);
+
+    const drawItems = async () => {
+      for (const item of sortedItems) {
+        if (item.type === "image") {
+          await new Promise<void>((resolve) => {
+            const img = new Image();
+            img.onload = () => {
+              ctx.drawImage(img, item.x, item.y, item.width, item.height);
+              resolve();
+            };
+            img.onerror = () => resolve();
+            img.src = item.content;
+          });
+        } else {
+          const fontSize = Math.max(12, Math.min(item.width, item.height) * 0.14);
+          ctx.font = `bold ${fontSize}px Inter, sans-serif`;
+          ctx.fillStyle = isDark ? "#f4f1f0" : "#544683";
+          ctx.textAlign = "center";
+          ctx.textBaseline = "middle";
+
+          const words = item.content.split(" ");
+          const lineHeight = fontSize * 1.3;
+          const maxWidth = item.width - 16;
+          const lines: string[] = [];
+          let currentLine = "";
+
+          for (const word of words) {
+            const testLine = currentLine ? `${currentLine} ${word}` : word;
+            const metrics = ctx.measureText(testLine);
+            if (metrics.width > maxWidth && currentLine) {
+              lines.push(currentLine);
+              currentLine = word;
+            } else {
+              currentLine = testLine;
+            }
+          }
+          if (currentLine) lines.push(currentLine);
+
+          const totalHeight = lines.length * lineHeight;
+          const startY = item.y + (item.height - totalHeight) / 2 + lineHeight / 2;
+
+          lines.forEach((line, i) => {
+            ctx.fillText(
+              line,
+              item.x + item.width / 2,
+              startY + i * lineHeight
+            );
+          });
+        }
+      }
+    };
+
+    drawItems();
+  }, [preview, isDark]);
+
+  const handleDownload = async () => {
     if (!preview) return;
-    setExporting(true);
+    setDownloading(true);
 
     try {
-      const dimensions = getBoardDimensions(preview.items);
+      const dimensions = getBoardDimensions(preview.board, preview.items);
+      const canvas = document.createElement("canvas");
+      canvas.width = dimensions.width;
+      canvas.height = dimensions.height;
+      const ctx = canvas.getContext("2d");
 
-      const offscreen = document.createElement("div");
-      offscreen.style.position = "fixed";
-      offscreen.style.top = "-99999px";
-      offscreen.style.left = "-99999px";
-      offscreen.style.width = `${dimensions.width}px`;
-      offscreen.style.height = `${dimensions.height}px`;
-      offscreen.style.backgroundColor = isDark ? "#2a223a" : "#ffffff";
-      offscreen.style.overflow = "hidden";
+      if (!ctx) throw new Error("Could not get canvas context");
 
-      preview.items.forEach((item) => {
-        const el = document.createElement("div");
-        el.style.position = "absolute";
-        el.style.left = `${item.x}px`;
-        el.style.top = `${item.y}px`;
-        el.style.width = `${item.width}px`;
-        el.style.height = `${item.height}px`;
-        el.style.overflow = "hidden";
+      ctx.fillStyle = isDark ? "#2a223a" : "#ffffff";
+      ctx.fillRect(0, 0, dimensions.width, dimensions.height);
 
+      const sortedItems = [...preview.items].sort((a, b) => a.zIndex - b.zIndex);
+
+      for (const item of sortedItems) {
         if (item.type === "image") {
-          const img = document.createElement("img");
-          img.src = item.content;
-          img.style.width = "100%";
-          img.style.height = "100%";
-          img.style.objectFit = "contain";
-          img.style.objectPosition = "center";
-          el.appendChild(img);
+          await new Promise<void>((resolve) => {
+            const img = new Image();
+            img.onload = () => {
+              ctx.drawImage(img, item.x, item.y, item.width, item.height);
+              resolve();
+            };
+            img.onerror = () => resolve();
+            img.src = item.content;
+          });
         } else {
-          el.style.display = "flex";
-          el.style.alignItems = "center";
-          el.style.justifyContent = "center";
-          el.style.fontWeight = "bold";
-          el.style.fontSize = "1rem";
-          el.textContent = item.content;
+          const fontSize = Math.max(12, Math.min(item.width, item.height) * 0.14);
+          ctx.font = `bold ${fontSize}px Inter, sans-serif`;
+          ctx.fillStyle = isDark ? "#f4f1f0" : "#544683";
+          ctx.textAlign = "center";
+          ctx.textBaseline = "middle";
+
+          const words = item.content.split(" ");
+          const lineHeight = fontSize * 1.3;
+          const maxWidth = item.width - 16;
+          const lines: string[] = [];
+          let currentLine = "";
+
+          for (const word of words) {
+            const testLine = currentLine ? `${currentLine} ${word}` : word;
+            const metrics = ctx.measureText(testLine);
+            if (metrics.width > maxWidth && currentLine) {
+              lines.push(currentLine);
+              currentLine = word;
+            } else {
+              currentLine = testLine;
+            }
+          }
+          if (currentLine) lines.push(currentLine);
+
+          const totalHeight = lines.length * lineHeight;
+          const startY = item.y + (item.height - totalHeight) / 2 + lineHeight / 2;
+
+          lines.forEach((line, i) => {
+            ctx.fillText(
+              line,
+              item.x + item.width / 2,
+              startY + i * lineHeight
+            );
+          });
         }
-
-        offscreen.appendChild(el);
-      });
-
-      document.body.appendChild(offscreen);
-
-      const canvas = await html2canvas(offscreen, {
-        useCORS: true,
-        allowTaint: true,
-        backgroundColor: isDark ? "#2a223a" : "#ffffff",
-        width: dimensions.width,
-        height: dimensions.height,
-        scale: 1,
-      });
-
-      document.body.removeChild(offscreen);
+      }
 
       const link = document.createElement("a");
       link.download = `${preview.board.name}.jpg`;
       link.href = canvas.toDataURL("image/jpeg", 0.9);
       link.click();
     } catch (err) {
-      console.error("Export failed:", err);
-      alert("Export failed. Please try again.");
+      console.error("Download failed:", err);
+      alert("Download failed. Please try again.");
     }
 
-    setExporting(false);
+    setDownloading(false);
   };
 
   const handleDelete = async (id: string) => {
@@ -214,7 +301,12 @@ export default function SavedMoodBoards() {
     </p>
   );
 
-  const boardDimensions = preview ? getBoardDimensions(preview.items) : null;
+  const boardDimensions = preview
+    ? getBoardDimensions(preview.board, preview.items)
+    : null;
+  const previewScale = boardDimensions
+    ? getPreviewScale(boardDimensions.width)
+    : 1;
 
   return (
     <div className="p-6 rounded-2xl">
@@ -234,7 +326,7 @@ export default function SavedMoodBoards() {
           {boards.map((board) => (
             <li
               key={board.id}
-              className="flex items-center justify-between p-3 border rounded-xl"
+              className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-3 border rounded-xl"
               style={cardStyle}
             >
               <div>
@@ -245,7 +337,7 @@ export default function SavedMoodBoards() {
                   {new Date(board.created_at).toLocaleDateString()}
                 </p>
               </div>
-              <div className="flex gap-2">
+              <div className="flex gap-2 justify-center flex-wrap">
                 <button
                   onClick={() => handlePreview(board)}
                   className={btnBase}
@@ -258,7 +350,7 @@ export default function SavedMoodBoards() {
                   className={btnBase}
                   style={{ backgroundColor: "var(--primary)" }}
                 >
-                  Open
+                  Edit
                 </button>
                 <button
                   onClick={() => handleDelete(board.id)}
@@ -280,10 +372,15 @@ export default function SavedMoodBoards() {
           onClick={() => setPreview(null)}
         >
           <div
-            className="rounded-2xl shadow-xl p-4 w-[90vw] max-w-4xl max-h-[90vh] flex flex-col"
-            style={modalStyle}
+            className="rounded-2xl shadow-xl p-4 w-[90vw] max-w-4xl flex flex-col"
+            style={{
+              ...modalStyle,
+              maxHeight: "90vh",
+              height: `calc(${previewScale * boardDimensions.height}px + 120px)`,
+            }}
             onClick={(e) => e.stopPropagation()}
           >
+            {/* Modal header */}
             <div className="flex justify-between items-center mb-3">
               <h3
                 className="text-lg font-semibold"
@@ -299,97 +396,52 @@ export default function SavedMoodBoards() {
                 ×
               </button>
             </div>
+
+            {/* Canvas preview area */}
             <div
-              className="overflow-auto flex-1 rounded-xl"
+              className="flex-1 rounded-xl overflow-hidden flex items-center justify-center"
               style={{ backgroundColor: isDark ? "#2a223a" : "#f3f4f6" }}
             >
-              <div
+              <canvas
                 ref={previewRef}
+                width={boardDimensions.width}
+                height={boardDimensions.height}
                 style={{
-                  position: "relative",
-                  width: boardDimensions.width,
-                  height: boardDimensions.height,
-                  backgroundColor: isDark ? "#2a223a" : "#ffffff",
+                  width: boardDimensions.width * previewScale,
+                  height: boardDimensions.height * previewScale,
+                  display: "block",
                 }}
-              >
-                {preview.items.length === 0 ? (
-                  <p
-                    style={{
-                      position: "absolute",
-                      inset: 0,
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      color: mutedColor,
-                    }}
-                  >
-                    This board has no items.
-                  </p>
-                ) : (
-                  preview.items.map((item, idx) => (
-                    <div
-                      key={idx}
-                      style={{
-                        position: "absolute",
-                        left: item.x,
-                        top: item.y,
-                        width: item.width,
-                        height: item.height,
-                        overflow: "hidden",
-                      }}
-                    >
-                      {item.type === "image" ? (
-                        <img
-                          src={item.content}
-                          alt="mood item"
-                          style={{
-                            width: "100%",
-                            height: "100%",
-                            objectFit: "contain",
-                            objectPosition: "center",
-                          }}
-                        />
-                      ) : (
-                        <div
-                          style={{
-                            width: "100%",
-                            height: "100%",
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "center",
-                            fontWeight: "bold",
-                            fontSize: "1rem",
-                            color: textColor,
-                          }}
-                        >
-                          {item.content}
-                        </div>
-                      )}
-                    </div>
-                  ))
-                )}
-              </div>
+              />
             </div>
-            <div className="flex gap-2 mt-3 justify-end">
+
+            {/* Modal footer */}
+            <div className="flex gap-2 mt-3 justify-center">
               <button
-                onClick={handleExport}
-                disabled={exporting}
-                className="px-4 py-2 text-white rounded-xl hover:opacity-80 transition-opacity disabled:opacity-50"
+                onClick={handleDownload}
+                disabled={downloading}
+                className="flex-1 py-2 text-white rounded-xl hover:opacity-80 transition-opacity disabled:opacity-50 text-sm"
                 style={{ backgroundColor: "var(--rose)" }}
               >
-                {exporting ? "Exporting..." : "Export as JPEG"}
+                {downloading ? "Downloading..." : "Download"}
               </button>
               <button
                 onClick={() => navigate(`/moodboard?board=${preview.board.id}`)}
-                className="px-4 py-2 text-white rounded-xl hover:opacity-80 transition-opacity"
+                className="flex-1 py-2 text-white rounded-xl hover:opacity-80 transition-opacity text-sm"
                 style={{ backgroundColor: "var(--primary)" }}
               >
-                Open in Editor
+                Edit
+              </button>
+              <button
+                onClick={() => handleDelete(preview.board.id)}
+                className="flex-1 py-2 text-white rounded-xl hover:opacity-80 transition-opacity text-sm"
+                style={{ backgroundColor: "var(--orchid)" }}
+              >
+                Delete
               </button>
               <button
                 onClick={() => setPreview(null)}
-                className="px-4 py-2 text-white rounded-xl hover:opacity-80 transition-opacity"
-                style={{ backgroundColor: "var(--orchid)" }}
+                className="flex-1 py-2 text-white rounded-xl hover:opacity-80 transition-opacity text-sm"
+                style={{ backgroundColor: "var(--plum)" }}
               >
                 Close
               </button>

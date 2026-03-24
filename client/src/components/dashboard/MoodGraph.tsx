@@ -32,7 +32,7 @@ const MoodGraph = () => {
   if (loading) return <p>Loading mood data...</p>;
 
   return (
-    <div className="p-6">
+    <div className="p-6 overflow-x-auto">
       <h2 className="text-xl font-semibold mb-4 text-center" style={{ color: textColor }}>
         Mood Over Time
       </h2>
@@ -48,10 +48,14 @@ const MoodGraph = () => {
           <YAxis
             domain={[1, 7]}
             ticks={[1, 2, 3, 4, 5, 6, 7]}
-            tick={{ fill: textColor, fontSize: 14 }}
+            tick={{ fill: textColor, fontSize: 11 }}
             axisLine={{ stroke: gridColor }}
             tickLine={{ stroke: gridColor }}
-            tickFormatter={(value) => Object.keys(moodMap).find(key => moodMap[key] === value) || ''}
+            width={60}
+            tickFormatter={(value) => {
+              const label = Object.keys(moodMap).find(key => moodMap[key] === value) || '';
+              return label.length > 7 ? label.slice(0, 6) + '…' : label;
+            }}
           />
           <Tooltip
             formatter={(value: number) => Object.keys(moodMap).find(key => moodMap[key] === value)}

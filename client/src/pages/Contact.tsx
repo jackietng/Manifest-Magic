@@ -8,14 +8,16 @@ const Contact = () => {
   const [success, setSuccess] = useState("");
   const [error, setError] = useState("");
   const { theme } = useTheme();
+  const isDark = theme === "dark";
+  const textColor = isDark ? "var(--snow)" : "var(--primary)";
 
   const inputStyle = {
-    backgroundColor: theme === "dark" ? "#2a223a" : "var(--snow)",
-    color: theme === "dark" ? "var(--snow)" : "var(--primary)",
+    backgroundColor: isDark ? "#2a223a" : "var(--snow)",
+    color: isDark ? "var(--snow)" : "var(--primary)",
   };
 
   const labelStyle = {
-    color: theme === "dark" ? "var(--snow)" : "var(--primary)",
+    color: textColor,
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -43,7 +45,7 @@ const Contact = () => {
       } else {
         setError("Something went wrong. Please try again.");
       }
-    } catch (err) {
+    } catch {
       setError("Something went wrong. Please try again.");
     }
 
@@ -51,17 +53,25 @@ const Contact = () => {
   };
 
   return (
-    <section className="max-w-3xl mx-auto px-6 py-12">
+    <section className="max-w-3xl mx-auto px-4 sm:px-6 py-12">
       <h1
-        className="text-3xl text-center font-bold mb-6"
-        style={{ color: theme === "dark" ? "var(--snow)" : "var(--primary)" }}
+        className="text-3xl text-center font-bold mb-6 mt-12 sm:mt-6"
+        style={{ color: textColor }}
       >
         Contact Us
       </h1>
-      <form onSubmit={handleSubmit} className="rounded-lg p-6 space-y-4">
+
+      <p
+        className="text-center mb-6 text-sm sm:text-base"
+        style={{ color: textColor }}
+      >
+        Have a question or just want to say hello? We'd love to hear from you!
+      </p>
+
+      <form onSubmit={handleSubmit} className="rounded-2xl p-4 sm:p-6 space-y-4">
         <div>
           <label
-            className="block font-semibold mb-1"
+            className="block font-semibold mb-1 text-sm sm:text-base"
             htmlFor="name"
             style={labelStyle}
           >
@@ -74,14 +84,15 @@ const Contact = () => {
             value={form.name}
             onChange={handleChange}
             required
-            className="w-full px-4 py-2 border border-purple-300 rounded-md focus:ring-2 focus:ring-purple-400 focus:outline-none"
+            placeholder="Your name"
+            className="w-full px-4 py-3 text-base border border-purple-300 rounded-xl focus:ring-2 focus:ring-[var(--violet)] focus:outline-none"
             style={inputStyle}
           />
         </div>
 
         <div>
           <label
-            className="block font-semibold mb-1"
+            className="block font-semibold mb-1 text-sm sm:text-base"
             htmlFor="email"
             style={labelStyle}
           >
@@ -94,14 +105,15 @@ const Contact = () => {
             value={form.email}
             onChange={handleChange}
             required
-            className="w-full px-4 py-2 border border-purple-300 rounded-md focus:ring-2 focus:ring-purple-400 focus:outline-none"
+            placeholder="your@email.com"
+            className="w-full px-4 py-3 text-base border border-purple-300 rounded-xl focus:ring-2 focus:ring-[var(--violet)] focus:outline-none"
             style={inputStyle}
           />
         </div>
 
         <div>
           <label
-            className="block font-semibold mb-1"
+            className="block font-semibold mb-1 text-sm sm:text-base"
             htmlFor="message"
             style={labelStyle}
           >
@@ -114,31 +126,35 @@ const Contact = () => {
             value={form.message}
             onChange={handleChange}
             required
-            className="w-full px-4 py-2 border border-purple-300 rounded-md resize-none focus:ring-2 focus:ring-purple-400 focus:outline-none"
+            placeholder="What's on your mind?"
+            className="w-full px-4 py-3 text-base border border-purple-300 rounded-xl resize-none focus:ring-2 focus:ring-[var(--violet)] focus:outline-none"
             style={inputStyle}
-          ></textarea>
+          />
         </div>
 
-        <div className="flex justify-center">
-          <button
-            type="submit"
-            disabled={sending}
-            className="px-6 py-2 rounded-md hover:shadow-lg hover:opacity-80 transition-opacity disabled:opacity-50 text-white"
-            style={{ backgroundColor: "var(--lilac)" }}
-          >
-            {sending ? "Sending..." : "Send Message"}
-          </button>
-        </div>
+        {/* Full width on mobile, auto on sm+ */}
+        <button
+          type="submit"
+          disabled={sending}
+          className="w-full sm:w-auto sm:px-8 py-3 rounded-xl hover:shadow-lg hover:opacity-80 transition-opacity disabled:opacity-50 text-white font-medium"
+          style={{ backgroundColor: "var(--primary)" }}
+        >
+          {sending ? "Sending..." : "Send Message"}
+        </button>
+
         {success && (
           <p
-            className="text-center mt-2"
-            style={{ color: theme === "dark" ? "var(--snow)" : "var(--primary)" }}
+            className="text-center mt-2 text-sm sm:text-base"
+            style={{ color: textColor }}
           >
-            Your message has been sent! We will get back to you soon. {theme === "dark" ? "🤍" : "💜"}
+            {success} {isDark ? "🤍" : "💜"}
           </p>
         )}
         {error && (
-          <p className="text-center mt-2" style={{ color: "var(--rose)" }}>
+          <p
+            className="text-center mt-2 text-sm sm:text-base"
+            style={{ color: "var(--rose)" }}
+          >
             {error}
           </p>
         )}

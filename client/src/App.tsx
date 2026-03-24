@@ -14,6 +14,7 @@ import Footer from "./components/common/Footer";
 import ProtectedRoute from "./components/ProtectedRoute";
 import MoodInput from "./components/moodboard/MoodInput";
 import DynamicMoodBoard from "./components/moodboard/DynamicMoodBoard";
+import Profile from "./pages/Profile";
 
 function App() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -24,7 +25,7 @@ function App() {
       <ThemeToggle />
       <main
         className={`flex-1 transition-all duration-300 ease-in-out ${
-          sidebarOpen ? "ml-64" : "ml-10"
+          sidebarOpen ? "md:ml-64 ml-0" : "md:ml-10 ml-0"
         }`}
       >
         <Routes>
@@ -47,16 +48,24 @@ function App() {
               element={
                 <>
                   <MoodInput />
-                  <DynamicMoodBoard />
+                  <DynamicMoodBoard setSidebarOpen={setSidebarOpen} />
                 </>
               }
             />
           </Route>
+          <Route
+            path="/profile"
+            element={
+              <ProtectedRoute>
+                <Profile />
+              </ProtectedRoute>
+            }
+          />
         </Routes>
       </main>
       <footer
         className={`transition-all duration-300 ease-in-out ${
-          sidebarOpen ? "ml-64" : "ml-10"
+          sidebarOpen ? "md:ml-64 ml-0" : "md:ml-10 ml-0"
         }`}
       >
         <Footer />

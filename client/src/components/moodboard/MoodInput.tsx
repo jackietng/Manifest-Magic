@@ -14,10 +14,9 @@ const MoodInput = () => {
   };
 
   const textColor = isDark ? "var(--snow)" : "var(--primary)";
-  const mutedColor = isDark ? "var(--lavender)" : "var(--orchid)";
 
   return (
-    <div className="rounded-2xl p-6">
+    <div className="rounded-2xl px-4 py-6 sm:p-6">
       <h2
         className="text-xl text-center font-semibold mb-4"
         style={{ color: textColor }}
@@ -27,16 +26,11 @@ const MoodInput = () => {
       <input
         type="text"
         placeholder="Type your mood..."
-        className="w-full border rounded-xl focus:outline-none focus:ring-2 focus:ring-[var(--violet)]"
+        className="w-full px-4 py-3 border rounded-xl focus:outline-none focus:ring-2 focus:ring-[var(--violet)] text-base"
         value={mood}
         onChange={(e) => setMood(e.target.value)}
         style={inputStyle}
       />
-      {mood && (
-        <p className="mt-4" style={{ color: mutedColor }}>
-          You entered: <strong style={{ color: textColor }}>{mood}</strong>
-        </p>
-      )}
     </div>
   );
 };

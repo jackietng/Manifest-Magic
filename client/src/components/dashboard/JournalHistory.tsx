@@ -124,43 +124,44 @@ export default function JournalHistory() {
           {entries.map((entry) => (
             <li
               key={entry.id}
-              className="p-4 rounded-xl shadow-sm"
+              className="p-4 rounded-xl shadow-sm flex flex-col sm:flex-row sm:items-start gap-3"
               style={cardStyle}
             >
-              <div className="flex items-start justify-between gap-2">
-                <div className="flex-1 min-w-0">
-                  <h3
-                    className="text-lg font-bold truncate"
-                    style={{ color: textColor }}
-                  >
-                    {entry.title}
-                  </h3>
-                  <p className="text-sm mt-1" style={{ color: mutedColor }}>
-                    {new Date(entry.created_at).toLocaleString()}
-                  </p>
-                  <p
-                    className="mt-2 line-clamp-2 text-sm"
-                    style={{ color: textColor }}
-                  >
-                    {entry.content}
-                  </p>
-                </div>
-                <div className="flex flex-col gap-2 shrink-0">
-                  <button
-                    onClick={() => handlePreview(entry)}
-                    className={btnBase}
-                    style={{ backgroundColor: "var(--primary)" }}
-                  >
-                    Preview
-                  </button>
-                  <button
-                    onClick={() => entry.id && handleDelete(entry.id)}
-                    className={btnBase}
-                    style={{ backgroundColor: "var(--rose)" }}
-                  >
-                    Delete
-                  </button>
-                </div>
+              {/* Entry info */}
+              <div className="flex-1 min-w-0">
+                <h3
+                  className="text-lg font-bold truncate"
+                  style={{ color: textColor }}
+                >
+                  {entry.title}
+                </h3>
+                <p className="text-sm mt-1" style={{ color: mutedColor }}>
+                  {new Date(entry.created_at).toLocaleString()}
+                </p>
+                <p
+                  className="mt-2 line-clamp-2 text-sm"
+                  style={{ color: textColor }}
+                >
+                  {entry.content}
+                </p>
+              </div>
+
+              {/* Action buttons — row on mobile, column on sm+ */}
+              <div className="flex sm:flex-col flex-row gap-2 shrink-0">
+                <button
+                  onClick={() => handlePreview(entry)}
+                  className={`${btnBase} flex-1 sm:flex-none text-center`}
+                  style={{ backgroundColor: "var(--primary)" }}
+                >
+                  Preview
+                </button>
+                <button
+                  onClick={() => entry.id && handleDelete(entry.id)}
+                  className={`${btnBase} flex-1 sm:flex-none text-center`}
+                  style={{ backgroundColor: "var(--rose)" }}
+                >
+                  Delete
+                </button>
               </div>
             </li>
           ))}
@@ -170,28 +171,28 @@ export default function JournalHistory() {
       {/* Preview Modal */}
       {preview && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center"
+          className="fixed inset-0 z-50 flex items-center justify-center p-4"
           style={{ backgroundColor: "rgba(0,0,0,0.4)" }}
           onClick={() => setPreview(null)}
         >
           <div
-            className="w-[90vw] max-w-2xl max-h-[80vh] flex flex-col rounded-2xl shadow-xl p-6"
+            className="w-full max-w-2xl max-h-[85vh] flex flex-col rounded-2xl shadow-xl p-4 sm:p-6"
             style={modalStyle}
             onClick={(e) => e.stopPropagation()}
           >
             {/* Modal header */}
-            <div className="flex justify-between items-center mb-4">
+            <div className="flex justify-between items-center mb-4 gap-2">
               {editing ? (
-                <input
-                  type="text"
+                <textarea
                   value={editTitle}
                   onChange={(e) => setEditTitle(e.target.value)}
-                  className="text-xl font-bold w-full px-3 py-1 border rounded-xl focus:outline-none focus:ring-2 focus:ring-[var(--violet)]"
+                  rows={2}
+                  className="text-lg font-bold w-full px-3 py-1 border rounded-xl focus:outline-none focus:ring-2 focus:ring-[var(--violet)] resize-none leading-snug"
                   style={inputStyle}
                 />
               ) : (
                 <h3
-                  className="text-xl font-bold truncate flex-1"
+                  className="text-lg font-bold break-words flex-1"
                   style={{ color: textColor }}
                 >
                   {preview.title}
@@ -199,7 +200,7 @@ export default function JournalHistory() {
               )}
               <button
                 onClick={() => setPreview(null)}
-                className="ml-3 text-xl font-bold hover:opacity-60 transition-opacity shrink-0"
+                className="text-xl font-bold hover:opacity-60 transition-opacity shrink-0"
                 style={{ color: textColor }}
               >
                 ×
@@ -215,7 +216,7 @@ export default function JournalHistory() {
             <div className="flex-1 overflow-auto">
               {editing ? (
                 <textarea
-                  rows={10}
+                  rows={8}
                   value={editContent}
                   onChange={(e) => setEditContent(e.target.value)}
                   className="w-full px-3 py-2 border rounded-xl focus:outline-none focus:ring-2 focus:ring-[var(--violet)] resize-none"
@@ -223,7 +224,7 @@ export default function JournalHistory() {
                 />
               ) : (
                 <p
-                  className="whitespace-pre-wrap leading-relaxed"
+                  className="whitespace-pre-wrap leading-relaxed text-sm sm:text-base"
                   style={{ color: textColor }}
                 >
                   {preview.content}
@@ -245,13 +246,13 @@ export default function JournalHistory() {
               </p>
             )}
 
-            {/* Modal footer buttons */}
-            <div className="flex gap-2 mt-4 justify-end">
+            {/* Modal footer buttons — centered and full width on mobile */}
+            <div className="flex gap-2 mt-4 justify-center">
               {editing ? (
                 <>
                   <button
                     onClick={() => setEditing(false)}
-                    className={btnBase}
+                    className={`${btnBase} flex-1`}
                     style={{ backgroundColor: "var(--orchid)" }}
                   >
                     Cancel
@@ -259,7 +260,7 @@ export default function JournalHistory() {
                   <button
                     onClick={handleSave}
                     disabled={saving}
-                    className={btnBase}
+                    className={`${btnBase} flex-1`}
                     style={{ backgroundColor: "var(--plum)" }}
                   >
                     {saving ? "Saving..." : "Save Changes"}
@@ -269,14 +270,14 @@ export default function JournalHistory() {
                 <>
                   <button
                     onClick={handleEdit}
-                    className={btnBase}
+                    className={`${btnBase} flex-1`}
                     style={{ backgroundColor: "var(--primary)" }}
                   >
                     Edit
                   </button>
                   <button
                     onClick={() => preview.id && handleDelete(preview.id)}
-                    className={btnBase}
+                    className={`${btnBase} flex-1`}
                     style={{ backgroundColor: "var(--rose)" }}
                   >
                     Delete

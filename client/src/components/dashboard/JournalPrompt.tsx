@@ -2,25 +2,19 @@
 import { useState } from "react";
 import { supabase } from "../../lib/supabaseClient";
 import { useTheme } from "../../context/ThemeContext";
+import promptData from "../../data/journalPrompts.json";
 
-const prompts = [
-  "What are three things you're grateful for today?",
-  "Describe a moment this week that made you smile.",
-  "Write about a challenge and what you learned from it.",
-  "How can you show yourself more kindness today?",
-  "What emotion has been most present for you lately?",
-  "What is something you are looking forward to?",
-  "What would make today feel meaningful?",
-];
+const getRandomPrompt = (exclude?: string): string => {
+  const available = promptData.prompts.filter((p) => p !== exclude);
+  return available[Math.floor(Math.random() * available.length)];
+};
 
 const JournalPrompt = () => {
   const [text, setText] = useState("");
   const [title, setTitle] = useState("");
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState("");
-  const [prompt] = useState(
-    prompts[Math.floor(Math.random() * prompts.length)]
-  );
+  const [prompt, setPrompt] = useState(() => getRandomPrompt());
   const { theme } = useTheme();
 
   const inputStyle = {
@@ -31,6 +25,14 @@ const JournalPrompt = () => {
 
   const textColor = theme === "dark" ? "var(--snow)" : "var(--primary)";
   const mutedColor = theme === "dark" ? "var(--snow)" : "var(--primary)";
+
+  const handleNewPrompt = () => {
+    setPrompt((prev) => getRandomPrompt(prev));
+    setText("");
+    setTitle("");
+    setSaved(false);
+    setError("");
+  };
 
   const handleSave = async () => {
     setError("");
@@ -53,6 +55,7 @@ const JournalPrompt = () => {
       setText("");
       setTitle("");
       setSaved(true);
+      setPrompt(getRandomPrompt(prompt));
       setTimeout(() => setSaved(false), 2000);
     }
   };
@@ -71,6 +74,21 @@ const JournalPrompt = () => {
       >
         "{prompt}"
       </p>
+
+      {/* New prompt button */}
+      <div className="flex justify-center -mt-4">
+        <button
+          onClick={handleNewPrompt}
+          className="text-sm px-3 py-1 rounded-full hover:shadow-lg"
+          style={{
+            backgroundColor: "transparent",
+            color: mutedColor,
+          }}
+        >
+          ✨ Give me a different prompt
+        </button>
+      </div>
+
       <input
         type="text"
         className="mt-4 w-full px-4 py-2 border rounded-xl focus:outline-none focus:ring-2 focus:ring-[var(--violet)]"
@@ -87,21 +105,22 @@ const JournalPrompt = () => {
         onChange={(e) => setText(e.target.value)}
         style={inputStyle}
       />
-      <div className="flex justify-end mt-2">
+      <div className="flex justify-center mt-2">
         <button
           onClick={handleSave}
-          className="mt-2 px-4 py-2 text-white bg-[var(--lilac)] rounded-xl hover:shadow-lg"
+          className="mt-2 px-4 py-2 text-white rounded-xl hover:opacity-80 transition-opacity"
+          style={{ backgroundColor: "var(--lilac)" }}
         >
           Save Entry
         </button>
-      </div> 
+      </div>
       {saved && (
-        <p className="mt-2" style={{ color: "var(--primary)" }}>
+        <p className="mt-2 text-center" style={{ color: theme === "dark" ? "var(--snow)" : "var(--primary)" }}>
           Entry saved!
         </p>
       )}
       {error && (
-        <p className="mt-2" style={{ color: "var(--rose)" }}>
+        <p className="mt-2 text-center" style={{ color: "var(--rose)" }}>
           {error}
         </p>
       )}

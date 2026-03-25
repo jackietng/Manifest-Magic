@@ -209,14 +209,14 @@ export default function MoodItem({
           if (touchDevice) setSelected(true);
         }}
         onDrag={(_, d) => {
-          const scaledX = d.x / scale;
-          const scaledY = d.y / scale;
+          const scaledX = touchDevice ? d.x : d.x / scale;
+          const scaledY = touchDevice ? d.y : d.y / scale;
           setPos({ x: scaledX, y: scaledY });
         }}
         onDragStop={(_, d) => {
           isDragging.current = false;
-          const scaledX = d.x / scale;
-          const scaledY = d.y / scale;
+          const scaledX = touchDevice ? d.x : d.x / scale;
+          const scaledY = touchDevice ? d.y : d.y / scale;
           setPos({ x: scaledX, y: scaledY });
           onChange(item.id, { x: scaledX, y: scaledY });
         }}
@@ -225,10 +225,14 @@ export default function MoodItem({
           if (touchDevice) setSelected(true);
         }}
         onResize={(_, __, ref, _delta, position) => {
-          const newWidth = parseFloat(ref.style.width) / scale;
-          const newHeight = parseFloat(ref.style.height) / scale;
-          const scaledX = position.x / scale;
-          const scaledY = position.y / scale;
+          const newWidth = touchDevice
+            ? parseFloat(ref.style.width)
+            : parseFloat(ref.style.width) / scale;
+          const newHeight = touchDevice
+            ? parseFloat(ref.style.height)
+            : parseFloat(ref.style.height) / scale;
+          const scaledX = touchDevice ? position.x : position.x / scale;
+          const scaledY = touchDevice ? position.y : position.y / scale;
           setPos({ x: scaledX, y: scaledY });
           setSize({ width: newWidth, height: newHeight });
           onChange(item.id, {
@@ -240,10 +244,14 @@ export default function MoodItem({
         }}
         onResizeStop={(_, __, ref, _delta, position) => {
           isResizing.current = false;
-          const newWidth = parseFloat(ref.style.width) / scale;
-          const newHeight = parseFloat(ref.style.height) / scale;
-          const scaledX = position.x / scale;
-          const scaledY = position.y / scale;
+          const newWidth = touchDevice
+            ? parseFloat(ref.style.width)
+            : parseFloat(ref.style.height) / scale;
+          const newHeight = touchDevice
+            ? parseFloat(ref.style.height)
+            : parseFloat(ref.style.height) / scale;
+          const scaledX = touchDevice ? position.x : position.x / scale;
+          const scaledY = touchDevice ? position.y : position.y / scale;
           setPos({ x: scaledX, y: scaledY });
           setSize({ width: newWidth, height: newHeight });
           onChange(item.id, {

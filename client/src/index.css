@@ -1,0 +1,210 @@
+@import "@fontsource/inter";
+@import "tailwindcss";
+
+:root {
+  --primary: #544683;
+  --lavender: #e4b5fb;
+  --lilac: #936fb3;
+  --orchid: #a485b4;
+  --plum: #ae89cf;
+  --violet: #b485d3;
+  --blush: #c49aaf;
+  --rose: #e095c2;
+  --snow: #f4f1f0;
+  --petal: #ebcef4;
+  --cotton: #fdd1e6;
+}
+
+body {
+  font-family: "Inter", sans-serif;
+  color: var(--primary);
+  background-color: var(--snow);
+}
+
+body.light {
+  color: var(--primary);
+  background-image: url("/images/bg-light.jpg");
+  background-size: cover;
+  background-repeat: no-repeat;
+  background-attachment: fixed;
+  background-position: center;
+  transition: background-image 0.5s ease-in-out;
+}
+
+body.dark {
+  color: var(--snow);
+  background-image: url("/images/bg-dark.png");
+  background-size: cover;
+  background-repeat: no-repeat;
+  background-attachment: fixed;
+  background-position: center;
+  transition: background-image 0.5s ease-in-out;
+}
+
+body.dark input,
+body.dark textarea {
+  background-color: #2a223a;
+  color: var(--snow);
+}
+
+body.dark h1,
+body.dark h2,
+body.dark h3,
+body.dark h4,
+body.dark h5,
+body.dark h6,
+body.dark p,
+body.dark a,
+body.dark li,
+body.dark label,
+body.dark span {
+  color: var(--snow);
+}
+
+body.light h1,
+body.light h2,
+body.light h3,
+body.light h4,
+body.light h5,
+body.light h6,
+body.light p,
+body.light a,
+body.light li,
+body.light label,
+body.light span {
+  color: var(--primary);
+}
+
+a {
+  color: var(--primary);
+  text-decoration: none;
+}
+
+a:hover {
+  text-decoration: underline;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-weight: 600;
+  color: var(--primary);
+}
+
+p {
+  margin-bottom: 1rem;
+}
+
+ul, ol {
+  margin-bottom: 1rem;
+  padding-left: 1.5rem;
+}
+
+li {
+  margin-bottom: 0.5rem;
+}
+
+code {
+  font-family: "Courier New", Courier, monospace;
+  background-color: var(--petal);
+  padding: 0.2rem 0.4rem;
+  border-radius: 4px;
+}
+
+pre {
+  background-color: var(--petal);
+  padding: 1rem;
+  border-radius: 4px;
+  overflow-x: auto;
+}
+
+blockquote {
+  border-left: 4px solid var(--lilac);
+  padding-left: 1rem;
+  color: var(--orchid);
+  margin: 1rem 0;
+}
+
+img:not(.mood-item-img) {
+  max-width: 80%;
+  height: auto;
+  background-color: transparent;
+}
+
+.mood-item-img {
+  max-width: 100%;
+  max-height: 100%;
+  width: 100%;
+  height: 100%;
+}
+
+input:not([type="file"]):not([type="checkbox"]):not([type="radio"]), textarea {
+  border: 1px solid var(--plum);
+  border-radius: 4px;
+  padding: 0.5rem;
+  font-size: 1rem;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  background-color: var(--snow);
+  color: var(--primary);
+}
+
+input:focus, textarea:focus {
+  border-color: var(--violet);
+  outline: none;
+}
+
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 1rem;
+}
+
+.mood-logger h2 {
+  color: var(--rose);
+}
+
+body.dark .mood-logger h2 {
+  color: var(--lavender);
+}
+
+.button {
+  background-color: var(--plum);
+  color: var(--snow);
+  padding: 0.5rem 1rem;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.navbar {
+  background-color: var(--lilac);
+  color: var(--snow);
+  padding: 1rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.navbar a {
+  color: var(--snow);
+  margin-right: 1rem;
+}
+
+.navbar a:hover {
+  text-decoration: underline;
+}
+
+.footer {
+  background-color: var(--primary);
+  color: var(--snow);
+  text-align: center;
+  padding: 1rem;
+}
+
+.footer a {
+  color: var(--snow);
+}
+
+.footer a:hover {
+  text-decoration: underline;
+}

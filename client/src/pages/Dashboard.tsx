@@ -1,13 +1,13 @@
 // src/pages/Dashboard.tsx
+import { useState } from 'react';
 import MoodLogger from '../components/dashboard/MoodLogger';
 import MoodGraph from '../components/dashboard/MoodGraph';
 import JournalHistory from '../components/dashboard/JournalHistory';
 import JournalPrompt from '../components/dashboard/JournalPrompt';
 import SavedMoodBoards from '../components/dashboard/SavedMoodBoards';
-import { useTheme } from '../context/ThemeContext';
 
 export default function Dashboard() {
-  const { theme } = useTheme();
+  const [moodRefreshKey, setMoodRefreshKey] = useState(0);
 
   return (
     <>
@@ -22,10 +22,10 @@ export default function Dashboard() {
           <JournalHistory />
         </div>
         <div className="p-6 mt-8">
-          <MoodLogger onMoodLogged={() => {}} />
+          <MoodLogger onMoodLogged={() => setMoodRefreshKey(k => k + 1)} />
         </div>
         <div className="mt-8">
-          <MoodGraph />
+          <MoodGraph refreshKey={moodRefreshKey} />
         </div>
       </div>
     </>

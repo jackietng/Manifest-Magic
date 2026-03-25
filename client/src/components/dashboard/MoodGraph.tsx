@@ -13,8 +13,8 @@ const moodMap: Record<string, number> = {
   Mad: 1
 };
 
-const MoodGraph = () => {
-  const { data, loading } = useUserMoods();
+const MoodGraph = ({ refreshKey = 0 }: { refreshKey?: number }) => {
+  const { data, loading } = useUserMoods(refreshKey);
   const { theme } = useTheme();
 
   const isDark = theme === "dark";

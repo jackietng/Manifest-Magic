@@ -9,7 +9,7 @@ const getRandomPrompt = (exclude?: string): string => {
   return available[Math.floor(Math.random() * available.length)];
 };
 
-const JournalPrompt = () => {
+const JournalPrompt = ({ onEntrySaved }: { onEntrySaved: () => void }) => {
   const [text, setText] = useState("");
   const [title, setTitle] = useState("");
   const [saved, setSaved] = useState(false);
@@ -55,6 +55,7 @@ const JournalPrompt = () => {
       setText("");
       setTitle("");
       setSaved(true);
+      onEntrySaved();
       setPrompt(getRandomPrompt(prompt));
       setTimeout(() => setSaved(false), 2000);
     }

@@ -10,7 +10,7 @@ type JournalEntry = {
   created_at: string;
 };
 
-export default function JournalHistory() {
+export default function JournalHistory({ refreshKey }: { refreshKey?: number }) {
   const [entries, setEntries] = useState<JournalEntry[]>([]);
   const [preview, setPreview] = useState<JournalEntry | null>(null);
   const [editing, setEditing] = useState(false);
@@ -41,7 +41,7 @@ export default function JournalHistory() {
 
   useEffect(() => {
     fetchJournals();
-  }, []);
+  }, [refreshKey]);
 
   const fetchJournals = async () => {
     const { data, error } = await supabase

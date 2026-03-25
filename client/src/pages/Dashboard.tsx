@@ -8,6 +8,7 @@ import SavedMoodBoards from '../components/dashboard/SavedMoodBoards';
 
 export default function Dashboard() {
   const [moodRefreshKey, setMoodRefreshKey] = useState(0);
+  const [journalRefreshKey, setJournalRefreshKey] = useState(0);
 
   return (
     <>
@@ -16,10 +17,10 @@ export default function Dashboard() {
           <SavedMoodBoards />
         </div>
         <div className="mt-8">
-          <JournalPrompt />
+          <JournalPrompt onEntrySaved={() => setJournalRefreshKey(k => k + 1)} />
         </div>
         <div className="mt-8">
-          <JournalHistory />
+          <JournalHistory refreshKey={journalRefreshKey} />
         </div>
         <div className="p-6 mt-8">
           <MoodLogger onMoodLogged={() => setMoodRefreshKey(k => k + 1)} />

@@ -316,11 +316,19 @@ export default function SavedMoodBoards() {
       >
         Saved Mood Boards
       </h2>
-
       {boards.length === 0 ? (
-        <p className="text-center" style={{ color: mutedColor }}>
-          No saved boards yet. Create one on the mood board page!
-        </p>
+        <div className="flex flex-col items-center gap-4">
+          <p className="text-center" style={{ color: mutedColor }}>
+            No saved boards yet. Create your first one!
+          </p>
+          <button
+            onClick={() => navigate("/moodboard")}
+            className="px-6 py-3 text-white rounded-xl hover:opacity-80 transition-opacity"
+            style={{ backgroundColor: "var(--primary)" }}
+          >
+           Create a Mood Board
+          </button>
+        </div>
       ) : (
         <ul className="space-y-3">
           {boards.map((board) => (

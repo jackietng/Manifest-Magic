@@ -9,11 +9,11 @@
     "strict": true,
     "forceConsistentCasingInFileNames": true,
     "module": "ESNext",
-    "moduleResolution": "Node",
+    "moduleResolution": "bundler",
     "resolveJsonModule": true,
     "isolatedModules": true,
     "noEmit": true,
-    "jsx": "react-jsx"  // <-- This is the key setting
+    "jsx": "react-jsx"
   },
   "include": ["src", "postcss.config.cjs", "vite.config.ts", "tailwind.config.js", "tsconfig.app.json", "tsconfig.json", "tsconfig.node.json", "eslint.config.js"]
 }

@@ -21,7 +21,9 @@ console.log("GMAIL_APP_PASSWORD:", process.env.GMAIL_APP_PASSWORD ? "✅ Found" 
 console.log("CONTACT_RECEIVER:", process.env.CONTACT_RECEIVER ? "✅ Found" : "❌ Missing");
 
 const app = express();
-app.use(cors());
+app.use(cors({
+  origin: true
+}));
 app.use(express.json());
 
 const supabase = createClient(

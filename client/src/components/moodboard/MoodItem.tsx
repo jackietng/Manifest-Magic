@@ -13,6 +13,11 @@ export type MoodItemType = {
   zIndex: number;
 };
 
+// Detect if the user is on a touch device
+const isTouchDevice = () =>
+  typeof window !== "undefined" &&
+  ("ontouchstart" in window || navigator.maxTouchPoints > 0);
+
 export default function MoodItem({
   item,
   onChange,
@@ -30,10 +35,15 @@ export default function MoodItem({
 }) {
   const [pos, setPos] = useState({ x: item.x, y: item.y });
   const [size, setSize] = useState({ width: item.width, height: item.height });
+  const [selected, setSelected] = useState(false);
   const [hovered, setHovered] = useState(false);
   const leaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isDragging = useRef(false);
   const isResizing = useRef(false);
+  const touchDevice = isTouchDevice();
+
+  // On mobile use selected state, on desktop use hovered state
+  const showControls = touchDevice ? selected : hovered;
 
   useEffect(() => {
     if (!isDragging.current && !isResizing.current) {
@@ -42,21 +52,37 @@ export default function MoodItem({
     }
   }, [item.x, item.y, item.width, item.height]);
 
+  // Dismiss selection when tapping outside
+  useEffect(() => {
+    if (!touchDevice || !selected) return;
+    const handleTouchOutside = () => setSelected(false);
+    document.addEventListener("touchstart", handleTouchOutside);
+    return () => document.removeEventListener("touchstart", handleTouchOutside);
+  }, [selected, touchDevice]);
+
   const fontSize = Math.max(12, Math.min(size.width, size.height) * 0.14);
 
   const handleMouseEnter = () => {
+    if (touchDevice) return;
     if (leaveTimer.current) clearTimeout(leaveTimer.current);
     setHovered(true);
   };
 
   const handleMouseLeave = () => {
+    if (touchDevice) return;
     leaveTimer.current = setTimeout(() => setHovered(false), 150);
   };
 
+  const handleTap = (e: React.TouchEvent) => {
+    if (!touchDevice) return;
+    e.stopPropagation();
+    setSelected(true);
+  };
+
   const handleStyle = {
-    width: "12px",
-    height: "12px",
-    backgroundColor: hovered ? "rgba(156, 163, 175, 0.9)" : "transparent",
+    width: touchDevice ? "20px" : "12px",
+    height: touchDevice ? "20px" : "12px",
+    backgroundColor: showControls ? "rgba(156, 163, 175, 0.9)" : "transparent",
     borderRadius: "3px",
     zIndex: 10,
     transition: "background-color 0.15s ease",
@@ -78,17 +104,17 @@ export default function MoodItem({
           color: "white",
           border: "none",
           borderRadius: "50%",
-          width: "18px",
-          height: "18px",
-          fontSize: "12px",
+          width: touchDevice ? "28px" : "18px",
+          height: touchDevice ? "28px" : "18px",
+          fontSize: touchDevice ? "16px" : "12px",
           cursor: "pointer",
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
           lineHeight: 1,
-          opacity: hovered ? 1 : 0,
+          opacity: showControls ? 1 : 0,
           transition: "opacity 0.15s ease",
-          pointerEvents: hovered ? "all" : "none",
+          pointerEvents: showControls ? "all" : "none",
         }}
       >
         ×
@@ -101,13 +127,13 @@ export default function MoodItem({
         style={{
           position: "absolute",
           left: pos.x,
-          top: pos.y - 22,
+          top: pos.y - 28,
           zIndex: item.zIndex + 100,
           display: "flex",
           gap: "3px",
-          opacity: hovered ? 1 : 0,
+          opacity: showControls ? 1 : 0,
           transition: "opacity 0.15s ease",
-          pointerEvents: hovered ? "all" : "none",
+          pointerEvents: showControls ? "all" : "none",
         }}
       >
         <button
@@ -118,8 +144,8 @@ export default function MoodItem({
             color: "white",
             border: "none",
             borderRadius: "4px",
-            padding: "2px 6px",
-            fontSize: "10px",
+            padding: touchDevice ? "6px 10px" : "2px 6px",
+            fontSize: touchDevice ? "13px" : "10px",
             cursor: "pointer",
             lineHeight: 1.4,
           }}
@@ -134,8 +160,8 @@ export default function MoodItem({
             color: "white",
             border: "none",
             borderRadius: "4px",
-            padding: "2px 6px",
-            fontSize: "10px",
+            padding: touchDevice ? "6px 10px" : "2px 6px",
+            fontSize: touchDevice ? "13px" : "10px",
             cursor: "pointer",
             lineHeight: 1.4,
           }}
@@ -149,6 +175,8 @@ export default function MoodItem({
         size={{ width: size.width, height: size.height }}
         bounds="parent"
         lockAspectRatio={false}
+        enableUserSelectHack={false}
+        cancel=".no-drag"
         enableResizing={{
           topLeft: true,
           topRight: false,
@@ -168,16 +196,19 @@ export default function MoodItem({
           position: "absolute",
           overflow: item.type === "text" ? "visible" : "hidden",
           zIndex: item.zIndex,
-          outline: hovered ? "1px dashed rgba(156, 163, 175, 0.6)" : "none",
+          outline: showControls
+            ? "2px dashed rgba(156, 163, 175, 0.8)"
+            : "none",
           transition: "outline 0.15s ease",
+          touchAction: "none",
         }}
         onMouseEnter={handleMouseEnter}
         onMouseLeave={handleMouseLeave}
         onDragStart={() => {
           isDragging.current = true;
+          if (touchDevice) setSelected(true);
         }}
         onDrag={(_, d) => {
-          // Divide by scale so drag distance matches visual position
           const scaledX = d.x / scale;
           const scaledY = d.y / scale;
           setPos({ x: scaledX, y: scaledY });
@@ -191,6 +222,7 @@ export default function MoodItem({
         }}
         onResizeStart={() => {
           isResizing.current = true;
+          if (touchDevice) setSelected(true);
         }}
         onResize={(_, __, ref, _delta, position) => {
           const newWidth = parseFloat(ref.style.width) / scale;
@@ -222,40 +254,45 @@ export default function MoodItem({
           });
         }}
       >
-        {item.type === "image" ? (
-          <img
-            src={item.content}
-            alt="Mood"
-            className="mood-item-img"
-            style={{
-              width: "100%",
-              height: "100%",
-              objectFit: "fill",
-              display: "block",
-              margin: 0,
-              padding: 0,
-            }}
-          />
-        ) : (
-          <div
-            style={{
-              width: "100%",
-              height: "100%",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              fontWeight: "bold",
-              fontSize: `${fontSize}px`,
-              padding: "8px",
-              boxSizing: "border-box",
-              wordBreak: "break-word",
-              textAlign: "center",
-              lineHeight: 1.3,
-            }}
-          >
-            {item.content}
-          </div>
-        )}
+        <div
+          style={{ width: "100%", height: "100%" }}
+          onTouchStart={handleTap}
+        >
+          {item.type === "image" ? (
+            <img
+              src={item.content}
+              alt="Mood"
+              className="mood-item-img"
+              style={{
+                width: "100%",
+                height: "100%",
+                objectFit: "fill",
+                display: "block",
+                margin: 0,
+                padding: 0,
+              }}
+            />
+          ) : (
+            <div
+              style={{
+                width: "100%",
+                height: "100%",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                fontWeight: "bold",
+                fontSize: `${fontSize}px`,
+                padding: "8px",
+                boxSizing: "border-box",
+                wordBreak: "break-word",
+                textAlign: "center",
+                lineHeight: 1.3,
+              }}
+            >
+              {item.content}
+            </div>
+          )}
+        </div>
       </Rnd>
     </>
   );

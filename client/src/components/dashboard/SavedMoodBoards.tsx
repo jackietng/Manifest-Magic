@@ -318,7 +318,7 @@ export default function SavedMoodBoards() {
       </h2>
       {boards.length === 0 ? (
         <div className="flex flex-col items-center gap-4">
-          <p className="text-center" style={{ color: mutedColor }}>
+          <p className="text-center" style={{ color: textColor }}>
             No saved boards yet. Create your first one!
           </p>
           <button

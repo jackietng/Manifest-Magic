@@ -25,7 +25,9 @@ app.use(cors({
   origin: [
     "http://localhost:5173", 
     "https://manifest-magic.vercel.app/"
-  ]
+  ],
+  methods: ["GET", "POST"],
+  credentials: true,
 }));
 app.use(express.json());
 
@@ -54,36 +56,32 @@ transporter.verify().then(() => {
 
 // Image proxy route
 app.get("/proxy-image", async (req, res) => {
-  const { url } = req.query;
-
-  if (!url) {
-    return res.status(400).json({ error: "No URL provided" });
-  }
+  const imageUrl = req.query.url;
+  if (!imageUrl) return res.status(400).json({ error: "No URL provided" });
 
   try {
-    const response = await fetch(url, {
+    res.setHeader("Access-Control-Allow-Origin", "https://manifest-magic.vercel.app");
+    res.setHeader("Access-Control-Allow-Methods", "GET");
+
+    const response = await fetch(imageUrl, {
       headers: {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-        "Accept": "image/webp,image/apng,image/*,*/*;q=0.8",
-        "Accept-Language": "en-US,en;q=0.9",
-        "Referer": "https://www.google.com/",
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+        "Accept": "image/*",
+        "Referer": "https://www.google.com",
       },
     });
 
-    if (!response.ok) {
-      return res.status(response.status).json({ error: "Failed to fetch image" });
-    }
+    if (!response.ok) throw new Error(`Failed to fetch image: ${response.status}`);
 
     const contentType = response.headers.get("content-type") || "image/jpeg";
-    const buffer = await response.arrayBuffer();
+    res.setHeader("Content-Type", contentType);
+    res.setHeader("Cache-Control", "public, max-age=86400");
 
-    res.set("Content-Type", contentType);
-    res.set("Cache-Control", "public, max-age=86400");
-    res.set("Access-Control-Allow-Origin", "*");
+    const buffer = await response.arrayBuffer();
     res.send(Buffer.from(buffer));
   } catch (err) {
     console.error("Proxy error:", err);
-    res.status(500).json({ error: "Proxy failed" });
+    res.status(500).json({ error: "Failed to fetch image" });
   }
 });
 

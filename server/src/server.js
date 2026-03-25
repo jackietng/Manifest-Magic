@@ -22,7 +22,10 @@ console.log("CONTACT_RECEIVER:", process.env.CONTACT_RECEIVER ? "âœ… Found" : "â
 
 const app = express();
 app.use(cors({
-  origin: true
+  origin: [
+    "http://localhost:5173", 
+    "https://manifest-magic.vercel.app/"
+  ]
 }));
 app.use(express.json());
 

@@ -67,7 +67,7 @@ const MoodGraph = ({ refreshKey = 0 }: { refreshKey?: number }) => {
             }}
             labelStyle={{ color: textColor }}
           />
-          <Line type="monotone" dataKey="moodValue" stroke="#8884d8" strokeWidth={2} dot />
+          <Line type="monotone" dataKey="Mood:" stroke="#8884d8" strokeWidth={2} dot />
         </LineChart>
       </ResponsiveContainer>
     </div>

@@ -3,7 +3,7 @@ import cors from "cors";
 import { createClient } from "@supabase/supabase-js";
 import dotenv from "dotenv";
 import fetch from "node-fetch";
-import nodemailer from "nodemailer";
+import { Resend } from "resend";
 import { fileURLToPath } from "url";
 import { dirname, join } from "path";
 
@@ -15,8 +15,7 @@ console.log("Looking for .env at:", envPath);
 dotenv.config({ path: envPath });
 console.log("SUPABASE_URL:", process.env.SUPABASE_URL ? "✅ Found" : "❌ Missing");
 console.log("SUPABASE_SERVICE_KEY:", process.env.SUPABASE_SERVICE_KEY ? "✅ Found" : "❌ Missing");
-console.log("GMAIL_USER:", process.env.GMAIL_USER ? "✅ Found" : "❌ Missing");
-console.log("GMAIL_APP_PASSWORD:", process.env.GMAIL_APP_PASSWORD ? "✅ Found" : "❌ Missing");
+console.log("RESEND_API_KEY:", process.env.RESEND_API_KEY ? "✅ Found" : "❌ Missing");
 console.log("CONTACT_RECEIVER:", process.env.CONTACT_RECEIVER ? "✅ Found" : "❌ Missing");
 
 const app = express();
@@ -33,7 +32,6 @@ const corsOptions = {
 
 app.use(cors(corsOptions));
 
-// Handle preflight for all routes using middleware
 app.use((req, res, next) => {
   res.setHeader("Access-Control-Allow-Origin", "https://manifest-magic.vercel.app");
   res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
@@ -51,23 +49,7 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_KEY
 );
 
-// Nodemailer transporter
-const transporter = nodemailer.createTransport({
-  host: "smtp.gmail.com",
-  port: 587,
-  secure: false,
-  auth: {
-    user: process.env.GMAIL_USER,
-    pass: process.env.GMAIL_APP_PASSWORD,
-  },
-});
-
-// Non-blocking transporter verify
-transporter.verify().then(() => {
-  console.log("✅ Email transporter ready");
-}).catch((err) => {
-  console.error("❌ Email transporter error:", err);
-});
+const resend = new Resend(process.env.RESEND_API_KEY);
 
 // Image proxy route
 app.get("/proxy-image", async (req, res) => {
@@ -107,20 +89,24 @@ app.post("/contact", async (req, res) => {
   console.log("📧 Contact form received:", { name, email, message });
 
   if (!name || !email || !message) {
-    console.log("❌ Missing fields");
     return res.status(400).json({ success: false, error: "All fields are required" });
   }
 
   try {
-    const info = await transporter.sendMail({
-      from: `"Manifest Magic" <${process.env.GMAIL_USER}>`,
+    const { error } = await resend.emails.send({
+      from: "Manifest Magic <onboarding@resend.dev>",
       to: process.env.CONTACT_RECEIVER,
       replyTo: email,
       subject: `New Contact Form Message from ${name}`,
       text: `Name: ${name}\nEmail: ${email}\n\nMessage:\n${message}`,
     });
 
-    console.log("✅ Email sent successfully:", info.messageId);
+    if (error) {
+      console.error("❌ Resend error:", error);
+      return res.status(500).json({ success: false, error: "Failed to send email" });
+    }
+
+    console.log("✅ Email sent successfully");
     res.json({ success: true });
   } catch (err) {
     console.error("❌ Email error:", err);

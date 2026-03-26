@@ -1,4 +1,3 @@
-// src/server.js
 import express from "express";
 import cors from "cors";
 import { createClient } from "@supabase/supabase-js";
@@ -21,14 +20,22 @@ console.log("GMAIL_APP_PASSWORD:", process.env.GMAIL_APP_PASSWORD ? "✅ Found" 
 console.log("CONTACT_RECEIVER:", process.env.CONTACT_RECEIVER ? "✅ Found" : "❌ Missing");
 
 const app = express();
-app.use(cors({
+
+const corsOptions = {
   origin: [
-    "http://localhost:5173", 
-    "https://manifest-magic.vercel.app/"
+    "http://localhost:5173",
+    "https://manifest-magic.vercel.app",
   ],
-  methods: ["GET", "POST"],
+  methods: ["GET", "POST", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"],
   credentials: true,
-}));
+};
+
+app.use(cors(corsOptions));
+
+// Handle preflight requests for all routes
+app.options("*", cors(corsOptions));
+
 app.use(express.json());
 
 const supabase = createClient(

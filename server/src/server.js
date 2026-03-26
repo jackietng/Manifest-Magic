@@ -33,8 +33,16 @@ const corsOptions = {
 
 app.use(cors(corsOptions));
 
-// Handle preflight requests for all routes
-app.options("*", cors(corsOptions));
+// Handle preflight for all routes using middleware
+app.use((req, res, next) => {
+  res.setHeader("Access-Control-Allow-Origin", "https://manifest-magic.vercel.app");
+  res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
+  if (req.method === "OPTIONS") {
+    return res.sendStatus(204);
+  }
+  next();
+});
 
 app.use(express.json());
 

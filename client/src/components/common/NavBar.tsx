@@ -79,7 +79,7 @@ const NavBar = ({ isOpen, setIsOpen }: NavBarProps) => {
       <aside
         className={`fixed top-0 left-0 h-full z-40 flex flex-col
           shadow-2xl transform transition-transform duration-300 ease-in-out
-          w-full md:w-64
+          w-full md:w-64 overflow-y-auto 
           ${isOpen ? "translate-x-0" : "-translate-x-full"}`}
         style={{
           backgroundColor: "transparent",
@@ -89,7 +89,7 @@ const NavBar = ({ isOpen, setIsOpen }: NavBarProps) => {
         {/* Crystal ball and title */}
         <Link
           to="/"
-          className="flex flex-col items-center gap-0 mt-12 pb-4"
+          className="flex flex-col items-center gap-0 mt-8 sm:mt-12 pb-4"
           style={{ borderBottom: "1px solid rgba(255,255,255,0.15)" }}
         >
           <img
@@ -97,8 +97,8 @@ const NavBar = ({ isOpen, setIsOpen }: NavBarProps) => {
             alt="Crystal Ball"
             className="rounded-full"
             style={{
-              width: "200px",
-              height: "200px",
+              width: "clamp(100px, 20vh, 200px)",
+              height: "clamp(100px, 20vh, 200px)",
               objectFit: "cover",
               filter: "drop-shadow(0 4px 6px rgba(0, 0, 0, 0.2))",
             }}

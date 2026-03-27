@@ -51,9 +51,24 @@ export default function MoodItem({
 
   useEffect(() => {
     if (!touchDevice || !selected) return;
-    const handleTouchOutside = () => setSelected(false);
-    document.addEventListener("touchstart", handleTouchOutside);
-    return () => document.removeEventListener("touchstart", handleTouchOutside);
+
+    const handleTouchOutside = (e: TouchEvent) => {
+      // Don't deselect if touching a button
+      const target = e.target as HTMLElement;
+      if (target.closest(".no-drag")) return;
+      setSelected(false);
+    };
+
+    // Use a small delay so the tap that selected the item
+    // doesn't immediately trigger deselection
+    const timer = setTimeout(() => {
+      document.addEventListener("touchstart", handleTouchOutside);
+    }, 100);
+
+    return () => {
+      clearTimeout(timer);
+      document.removeEventListener("touchstart", handleTouchOutside);
+    };
   }, [selected, touchDevice]);
 
   const fontSize = Math.max(12, Math.min(size.width, size.height) * 0.14);
@@ -71,6 +86,9 @@ export default function MoodItem({
 
   const handleTap = (e: React.TouchEvent) => {
     if (!touchDevice) return;
+    // Don't re-trigger if tapping a button
+    const target = e.target as HTMLElement;
+    if (target.closest(".no-drag")) return;
     e.stopPropagation();
     setSelected(true);
   };
@@ -84,10 +102,10 @@ export default function MoodItem({
     transition: "background-color 0.15s ease",
   };
 
-  const btnSize = touchDevice ? "28px" : "20px";
-  const btnFontSize = touchDevice ? "16px" : "12px";
-  const overlayBtnPadding = touchDevice ? "5px 8px" : "2px 5px";
-  const overlayBtnFontSize = touchDevice ? "12px" : "9px";
+  const btnSize = touchDevice ? "32px" : "20px";
+  const btnFontSize = touchDevice ? "18px" : "12px";
+  const overlayBtnPadding = touchDevice ? "8px 12px" : "2px 5px";
+  const overlayBtnFontSize = touchDevice ? "13px" : "9px";
 
   return (
     <Rnd
@@ -243,6 +261,11 @@ export default function MoodItem({
             {/* Delete button — top right corner */}
             <button
               className="no-drag"
+              onTouchEnd={(e) => {
+                e.stopPropagation();
+                e.preventDefault();
+                onRemove(item.id);
+              }}
               onClick={(e) => {
                 e.stopPropagation();
                 onRemove(item.id);
@@ -264,6 +287,8 @@ export default function MoodItem({
                 justifyContent: "center",
                 pointerEvents: "all",
                 lineHeight: 1,
+                // Larger touch target on mobile
+                padding: touchDevice ? "8px" : "0px",
               }}
             >
               ×
@@ -276,12 +301,17 @@ export default function MoodItem({
                 bottom: "4px",
                 left: "4px",
                 display: "flex",
-                gap: "3px",
+                gap: "4px",
                 pointerEvents: "all",
               }}
             >
               <button
                 className="no-drag"
+                onTouchEnd={(e) => {
+                  e.stopPropagation();
+                  e.preventDefault();
+                  onBringToFront(item.id);
+                }}
                 onClick={(e) => {
                   e.stopPropagation();
                   onBringToFront(item.id);
@@ -302,6 +332,11 @@ export default function MoodItem({
               </button>
               <button
                 className="no-drag"
+                onTouchEnd={(e) => {
+                  e.stopPropagation();
+                  e.preventDefault();
+                  onSendToBack(item.id);
+                }}
                 onClick={(e) => {
                   e.stopPropagation();
                   onSendToBack(item.id);

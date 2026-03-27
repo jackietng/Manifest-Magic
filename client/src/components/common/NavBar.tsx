@@ -200,18 +200,12 @@ const NavBar = ({ isOpen, setIsOpen }: NavBarProps) => {
                 >
                   {avatarEmoji}
                 </div>
-                <div className="flex flex-col min-w-0">
+                <div className="flex flex-col min-w-0 justify-center">
                   <p
                     className="font-medium text-md truncate"
                     style={{ color: textColor }}
                   >
                     {displayName || user.email}
-                  </p>
-                  <p
-                    className="text-xs"
-                    style={{ color: isDark ? "var(--lavender)" : "var(--orchid)" }}
-                  >
-                    View Profile
                   </p>
                 </div>
               </Link>

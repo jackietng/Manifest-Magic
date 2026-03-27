@@ -174,10 +174,21 @@ const NavBar = ({ isOpen, setIsOpen }: NavBarProps) => {
             </>
           ) : (
             <>
-              {/* Avatar and display name */}
-              <div
-                className="flex items-center gap-3 px-2 py-2 rounded-xl"
-                style={{ backgroundColor: "rgba(255,255,255,0.05)" }}
+              {/* Avatar and display name — links to profile */}
+              <Link
+                to="/profile"
+                onClick={() => setIsOpen(false)}
+                className="flex items-center gap-3 px-2 py-2 rounded-xl no-underline transition duration-200"
+                style={{
+                  backgroundColor: "rgba(255,255,255,0.05)",
+                  textDecoration: "none",
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = "rgba(255,255,255,0.15)";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = "rgba(255,255,255,0.05)";
+                }}
               >
                 <div
                   style={{
@@ -191,14 +202,13 @@ const NavBar = ({ isOpen, setIsOpen }: NavBarProps) => {
                 </div>
                 <div className="flex flex-col min-w-0">
                   <p
-                    className="font-medium text-md truncate justify-center mt-6"
+                    className="font-medium text-md truncate"
                     style={{ color: textColor }}
                   >
                     {displayName || user.email}
                   </p>
                 </div>
-              </div>
-
+              </Link>
               {/* Log out button */}
               <button
                 onClick={handleSignOut}

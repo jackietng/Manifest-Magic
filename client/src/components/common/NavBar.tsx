@@ -48,7 +48,7 @@ const NavBar = ({ isOpen, setIsOpen }: NavBarProps) => {
     }
   };
 
-  const navLinks = ['about', 'moodboard', 'dashboard', 'profile', 'contact'];
+  const navLinks = ['about', 'moodboard', 'dashboard', 'contact'];
 
   return (
     <>

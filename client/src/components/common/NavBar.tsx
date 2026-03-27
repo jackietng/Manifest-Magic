@@ -2,17 +2,11 @@
 import { Link, useNavigate } from 'react-router-dom';
 import { HiMenu, HiX } from 'react-icons/hi';
 import { useAuth } from '../../context/AuthContext';
+import { useProfile } from '../../context/ProfileContext';
 import type { SVGProps } from 'react';
 import { supabase } from '../../lib/supabaseClient';
 import crystalBall from '../../assets/crystal_ball.png';
-import { useState, useEffect } from 'react';
 import { useTheme } from '../../context/ThemeContext';
-
-const AVATARS: Record<number, string> = {
-  1: "🔮", 2: "🌙", 3: "⭐", 4: "🌸", 5: "🦋",
-  6: "🌺", 7: "✨", 8: "🌿", 9: "💫", 10: "🕊️",
-  11: "🌻", 12: "☀️",
-};
 
 export function MdiCrystalBall(props: SVGProps<SVGSVGElement>) {
   return (
@@ -39,35 +33,10 @@ type NavBarProps = {
 const NavBar = ({ isOpen, setIsOpen }: NavBarProps) => {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const [displayName, setDisplayName] = useState("");
-  const [avatarId, setAvatarId] = useState<number | null>(null);
+  const { displayName, avatarEmoji } = useProfile();
   const { theme } = useTheme();
   const isDark = theme === "dark";
   const textColor = isDark ? "var(--snow)" : "var(--primary)";
-  const mutedColor = isDark ? "var(--lavender)" : "var(--orchid)";
-
-  useEffect(() => {
-    if (!user) {
-      setDisplayName("");
-      setAvatarId(null);
-      return;
-    }
-
-    const fetchProfile = async () => {
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("display_name, avatar_id")
-        .eq("id", user.id)
-        .single();
-
-      if (profile) {
-        setDisplayName(profile.display_name || "");
-        setAvatarId(profile.avatar_id || null);
-      }
-    };
-
-    fetchProfile();
-  }, [user]);
 
   const handleSignOut = async () => {
     const { error } = await supabase.auth.signOut();
@@ -218,7 +187,7 @@ const NavBar = ({ isOpen, setIsOpen }: NavBarProps) => {
                     textAlign: "center",
                   }}
                 >
-                  {avatarId ? AVATARS[avatarId] : "👤"}
+                  {avatarEmoji}
                 </div>
                 <div className="flex flex-col min-w-0">
                   <p

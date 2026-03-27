@@ -6,17 +6,18 @@ import { BrowserRouter } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import { MoodProvider } from './context/MoodContext';
 import { ThemeProvider } from './context/ThemeContext';
-
-// "Ignition switch" - 
+import { ProfileProvider } from './context/ProfileContext';
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <BrowserRouter>
       <ThemeProvider>
         <AuthProvider>
-          <MoodProvider>
-            <App />
-          </MoodProvider>
+          <ProfileProvider>
+            <MoodProvider>
+              <App />
+            </MoodProvider>
+          </ProfileProvider>
         </AuthProvider>
       </ThemeProvider>
     </BrowserRouter>

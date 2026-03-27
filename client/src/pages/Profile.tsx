@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import { supabase } from "../lib/supabaseClient";
 import { useTheme } from "../context/ThemeContext";
 import { useNavigate } from "react-router-dom";
+import { useProfile } from "../context/ProfileContext";
 
 const AVATARS = [
   { id: 1, emoji: "🔮", label: "Crystal Ball" },
@@ -22,7 +23,7 @@ const AVATARS = [
 export default function Profile() {
   const { theme } = useTheme();
   const navigate = useNavigate();
-
+  const { refreshProfile } = useProfile();
   const [email, setEmail] = useState("");
   const [displayName, setDisplayName] = useState("");
   const [selectedAvatar, setSelectedAvatar] = useState<number | null>(null);
@@ -128,6 +129,7 @@ export default function Profile() {
     }
 
     setSuccess("Profile updated successfully! 💜");
+    await refreshProfile();
     setNewPassword("");
     setConfirmPassword("");
     setSaving(false);

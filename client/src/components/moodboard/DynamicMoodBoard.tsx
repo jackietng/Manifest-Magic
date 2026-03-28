@@ -503,12 +503,11 @@ export default function DynamicMoodBoard({
   };
 
   return (
-    <div className="p-2 sm:p-4 min-h-screen">
-
+    <div className="pb-20 sm:pb-4 min-h-screen">
       {/* Error banner */}
       {boardError && (
         <div
-          className="mb-4 p-3 rounded-xl text-center text-white"
+          className="mb-4 p-3 rounded-xl text-center text-white mx-2"
           style={{ backgroundColor: "var(--rose)" }}
         >
           {boardError}
@@ -522,7 +521,7 @@ export default function DynamicMoodBoard({
       ) : (
         <>
           {/* Board name — always visible */}
-          <div className="mb-3 flex flex-col gap-2">
+          <div className="px-2 sm:px-4 pt-2 sm:pt-4 mb-2 sm:mb-3 flex flex-col gap-2">
             <input
               placeholder="Board name"
               type="text"
@@ -555,7 +554,7 @@ export default function DynamicMoodBoard({
           </div>
 
           {/* Board */}
-          <div ref={boardContainerRef} className="w-full flex justify-center">
+          <div ref={boardContainerRef} className="w-full flex justify-center px-2 sm:px-4">
             <div
               ref={boardWrapperRef}
               className="rounded-xl shadow"
@@ -592,7 +591,7 @@ export default function DynamicMoodBoard({
                     className="absolute inset-0 flex items-center justify-center text-center px-4"
                     style={{ color: "var(--orchid)" }}
                   >
-                    Add images or text below to get started!
+                    Add images or text to get started!
                   </p>
                 )}
                 {items.map((item) => (
@@ -610,178 +609,224 @@ export default function DynamicMoodBoard({
             </div>
           </div>
 
-          {/* ── Add content controls — below board on all screen sizes ── */}
-          <div className="mt-3">
-
-            {/* Mobile — collapsible */}
-            <div className="sm:hidden">
+          {/* Desktop add content controls — above bottom toolbar */}
+          <div className="hidden sm:flex flex-col gap-3 px-4 mt-3">
+            <div className="flex gap-2 flex-wrap">
+              <input
+                placeholder="Enter Text"
+                value={textInput}
+                onChange={(e) => setTextInput(e.target.value)}
+                className="p-2 border rounded-xl flex-1 focus:outline-none focus:ring-2 focus:ring-[var(--violet)]"
+                style={inputStyle}
+              />
               <button
-                onClick={() => setControlsOpen((prev) => !prev)}
-                className="w-full py-2 rounded-xl text-sm font-medium flex items-center justify-center gap-2 transition-opacity hover:opacity-80"
-                style={{
-                  backgroundColor: isDark ? "#2a223a" : "var(--petal)",
-                  color: isDark ? "var(--snow)" : "var(--primary)",
-                }}
+                onClick={() => addItem("text", textInput)}
+                className={btnBase}
+                style={{ backgroundColor: "var(--primary)" }}
               >
-                {controlsOpen ? "▲ Hide Controls" : "▼ Add Content"}
+                Add Text
               </button>
-
-              {controlsOpen && (
-                <div
-                  className="mt-2 p-3 rounded-xl flex flex-col gap-2"
-                  style={{
-                    backgroundColor: isDark ? "#1a1428" : "#f9f6ff",
-                  }}
-                >
-                  <div className="flex gap-2">
-                    <input
-                      placeholder="Enter text..."
-                      value={textInput}
-                      onChange={(e) => setTextInput(e.target.value)}
-                      className="p-2 border rounded-xl flex-1 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--violet)]"
-                      style={inputStyle}
-                    />
-                    <button
-                      onClick={() => {
-                        addItem("text", textInput);
-                        setControlsOpen(false);
-                      }}
-                      className={btnBase}
-                      style={{ backgroundColor: "var(--primary)" }}
-                    >
-                      Add
-                    </button>
-                  </div>
-
-                  <div className="flex gap-2">
-                    <input
-                      placeholder="Image URL..."
-                      type="text"
-                      value={imageUrl}
-                      onChange={(e) => setImageUrl(e.target.value)}
-                      className="p-2 border rounded-xl flex-1 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--violet)]"
-                      style={inputStyle}
-                    />
-                    <button
-                      onClick={() => {
-                        addItem("image", imageUrl);
-                        setControlsOpen(false);
-                      }}
-                      className={btnBase}
-                      style={{ backgroundColor: "var(--primary)" }}
-                    >
-                      Add
-                    </button>
-                  </div>
-
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept="image/*"
-                    onChange={(e) => {
-                      handleFileUpload(e);
-                      setControlsOpen(false);
-                    }}
-                    className="hidden"
-                  />
-                  <button
-                    onClick={() => fileInputRef.current?.click()}
-                    disabled={uploading}
-                    className="w-full py-2 rounded-xl text-white text-sm font-medium hover:opacity-80 transition-opacity disabled:opacity-50"
-                    style={{ backgroundColor: "var(--lilac)" }}
-                  >
-                    {uploading ? "Uploading..." : "📷 Upload from Device"}
-                  </button>
-                </div>
-              )}
             </div>
 
-            {/* Desktop — always visible */}
-            <div className="hidden sm:flex flex-col gap-3">
-              <div className="flex gap-2 flex-wrap">
-                <input
-                  placeholder="Enter Text"
-                  value={textInput}
-                  onChange={(e) => setTextInput(e.target.value)}
-                  className="p-2 border rounded-xl flex-1 focus:outline-none focus:ring-2 focus:ring-[var(--violet)]"
-                  style={inputStyle}
-                />
-                <button
-                  onClick={() => addItem("text", textInput)}
-                  className={btnBase}
-                  style={{ backgroundColor: "var(--primary)" }}
-                >
-                  Add Text
-                </button>
-              </div>
+            <div className="flex gap-2 flex-wrap">
+              <input
+                placeholder="Enter Image URL"
+                type="text"
+                value={imageUrl}
+                onChange={(e) => setImageUrl(e.target.value)}
+                className="p-2 border rounded-xl flex-1 focus:outline-none focus:ring-2 focus:ring-[var(--violet)]"
+                style={inputStyle}
+              />
+              <button
+                onClick={() => addItem("image", imageUrl)}
+                className={btnBase}
+                style={{ backgroundColor: "var(--primary)" }}
+              >
+                Add Image
+              </button>
+            </div>
 
-              <div className="flex gap-2 flex-wrap">
-                <input
-                  placeholder="Enter Image URL"
-                  type="text"
-                  value={imageUrl}
-                  onChange={(e) => setImageUrl(e.target.value)}
-                  className="p-2 border rounded-xl flex-1 focus:outline-none focus:ring-2 focus:ring-[var(--violet)]"
-                  style={inputStyle}
-                />
-                <button
-                  onClick={() => addItem("image", imageUrl)}
-                  className={btnBase}
-                  style={{ backgroundColor: "var(--primary)" }}
-                >
-                  Add Image
-                </button>
-              </div>
-
-              <div className="flex gap-2 flex-wrap items-center justify-center">
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="image/*"
-                  onChange={handleFileUpload}
-                  className="hidden"
-                />
-                <button
-                  onClick={() => fileInputRef.current?.click()}
-                  disabled={uploading}
-                  className={btnBase}
-                  style={{ backgroundColor: "var(--lilac)" }}
-                >
-                  {uploading ? "Uploading..." : "Upload Image from Device"}
-                </button>
-                <span className="text-sm" style={{ color: hintColor }}>
-                  Uploaded images work best for downloading
-                </span>
-              </div>
+            <div className="flex gap-2 flex-wrap items-center justify-center">
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                onChange={handleFileUpload}
+                className="hidden"
+              />
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                disabled={uploading}
+                className={btnBase}
+                style={{ backgroundColor: "var(--lilac)" }}
+              >
+                {uploading ? "Uploading..." : "Upload Image from Device"}
+              </button>
+              <span className="text-sm" style={{ color: hintColor }}>
+                Uploaded images work best for downloading
+              </span>
             </div>
           </div>
 
-          {/* Action buttons */}
-          <div className="flex gap-2 flex-wrap mt-3 justify-center">
+          {/* ── BOTTOM TOOLBAR — fixed on mobile, static on desktop ── */}
+          <div
+            className="fixed sm:relative bottom-0 left-0 right-0 sm:mt-3 z-50 sm:z-auto px-3 py-3 sm:px-4 sm:py-0 flex items-center gap-2 sm:justify-center sm:flex-wrap"
+            style={{
+              backgroundColor: isDark
+                ? "rgba(26, 20, 40, 0.97)"
+                : "rgba(255, 255, 255, 0.97)",
+              borderTop: `1px solid ${isDark ? "rgba(255,255,255,0.1)" : "rgba(84,70,131,0.15)"}`,
+              backdropFilter: "blur(8px)",
+              WebkitBackdropFilter: "blur(8px)",
+            }}
+          >
+            {/* Mobile — Add Content button opens sheet */}
+            <button
+              onClick={() => setControlsOpen((prev) => !prev)}
+              className="sm:hidden flex flex-col items-center gap-1 px-3 py-1 rounded-xl transition-opacity hover:opacity-80"
+              style={{
+                backgroundColor: isDark ? "#2a223a" : "var(--petal)",
+                color: isDark ? "var(--snow)" : "var(--primary)",
+                minWidth: "60px",
+              }}
+            >
+              <span style={{ fontSize: "1.3rem" }}>＋</span>
+              <span style={{ fontSize: "10px", fontWeight: 600 }}>Add</span>
+            </button>
+
+            {/* Save */}
             <button
               onClick={handleSave}
               disabled={saving}
-              className={btnBase}
-              style={{ backgroundColor: "var(--plum)" }}
+              className="flex flex-col items-center gap-1 px-3 py-1 rounded-xl transition-opacity hover:opacity-80 disabled:opacity-50 text-white flex-1 sm:flex-none sm:px-4 sm:py-2"
+              style={{ backgroundColor: "var(--plum)", minWidth: "60px" }}
             >
-              {saving ? "Saving..." : "Save Board"}
+              <span className="sm:hidden" style={{ fontSize: "1.3rem" }}>💾</span>
+              <span style={{ fontSize: "10px", fontWeight: 600 }} className="sm:hidden">
+                {saving ? "Saving..." : "Save"}
+              </span>
+              <span className="hidden sm:inline text-sm">
+                {saving ? "Saving..." : "Save Board"}
+              </span>
             </button>
+
+            {/* Clear */}
             <button
               onClick={clearBoard}
-              className={btnBase}
-              style={{ backgroundColor: "var(--orchid)" }}
+              className="flex flex-col items-center gap-1 px-3 py-1 rounded-xl transition-opacity hover:opacity-80 text-white flex-1 sm:flex-none sm:px-4 sm:py-2"
+              style={{ backgroundColor: "var(--orchid)", minWidth: "60px" }}
             >
-              Clear Board
+              <span className="sm:hidden" style={{ fontSize: "1.3rem" }}>🗑️</span>
+              <span style={{ fontSize: "10px", fontWeight: 600 }} className="sm:hidden">Clear</span>
+              <span className="hidden sm:inline text-sm">Clear Board</span>
             </button>
+
+            {/* Download */}
             <button
               onClick={handleDownload}
               disabled={downloading}
-              className={btnBase}
-              style={{ backgroundColor: "var(--rose)" }}
+              className="flex flex-col items-center gap-1 px-3 py-1 rounded-xl transition-opacity hover:opacity-80 disabled:opacity-50 text-white flex-1 sm:flex-none sm:px-4 sm:py-2"
+              style={{ backgroundColor: "var(--rose)", minWidth: "60px" }}
             >
-              {downloading ? "Downloading..." : "Download Board"}
+              <span className="sm:hidden" style={{ fontSize: "1.3rem" }}>⬇️</span>
+              <span style={{ fontSize: "10px", fontWeight: 600 }} className="sm:hidden">
+                {downloading ? "..." : "Download"}
+              </span>
+              <span className="hidden sm:inline text-sm">
+                {downloading ? "Downloading..." : "Download Board"}
+              </span>
             </button>
           </div>
+
+          {/* Mobile add content sheet — slides up from bottom toolbar */}
+          {controlsOpen && (
+            <div
+              className="sm:hidden fixed bottom-16 left-0 right-0 z-40 p-4 rounded-t-2xl shadow-2xl flex flex-col gap-3"
+              style={{
+                backgroundColor: isDark ? "#1a1428" : "#f9f6ff",
+                borderTop: `1px solid ${isDark ? "rgba(255,255,255,0.1)" : "rgba(84,70,131,0.15)"}`,
+              }}
+            >
+              <div className="flex items-center justify-between mb-1">
+                <span
+                  className="font-semibold text-sm"
+                  style={{ color: isDark ? "var(--snow)" : "var(--primary)" }}
+                >
+                  Add Content
+                </span>
+                <button
+                  onClick={() => setControlsOpen(false)}
+                  className="text-lg font-bold hover:opacity-60"
+                  style={{ color: isDark ? "var(--snow)" : "var(--primary)" }}
+                >
+                  ×
+                </button>
+              </div>
+
+              {/* Add text */}
+              <div className="flex gap-2">
+                <input
+                  placeholder="Enter text..."
+                  value={textInput}
+                  onChange={(e) => setTextInput(e.target.value)}
+                  className="p-2 border rounded-xl flex-1 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--violet)]"
+                  style={inputStyle}
+                />
+                <button
+                  onClick={() => {
+                    addItem("text", textInput);
+                    setControlsOpen(false);
+                  }}
+                  className={btnBase}
+                  style={{ backgroundColor: "var(--primary)" }}
+                >
+                  Add
+                </button>
+              </div>
+
+              {/* Add image URL */}
+              <div className="flex gap-2">
+                <input
+                  placeholder="Image URL..."
+                  type="text"
+                  value={imageUrl}
+                  onChange={(e) => setImageUrl(e.target.value)}
+                  className="p-2 border rounded-xl flex-1 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--violet)]"
+                  style={inputStyle}
+                />
+                <button
+                  onClick={() => {
+                    addItem("image", imageUrl);
+                    setControlsOpen(false);
+                  }}
+                  className={btnBase}
+                  style={{ backgroundColor: "var(--primary)" }}
+                >
+                  Add
+                </button>
+              </div>
+
+              {/* Upload */}
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                onChange={(e) => {
+                  handleFileUpload(e);
+                  setControlsOpen(false);
+                }}
+                className="hidden"
+              />
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                disabled={uploading}
+                className="w-full py-3 rounded-xl text-white text-sm font-medium hover:opacity-80 transition-opacity disabled:opacity-50"
+                style={{ backgroundColor: "var(--lilac)" }}
+              >
+                {uploading ? "Uploading..." : "📷 Upload from Device"}
+              </button>
+            </div>
+          )}
         </>
       )}
     </div>

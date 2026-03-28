@@ -23,7 +23,7 @@ const Signup = () => {
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen overflow-hidden">
-      <div className="text-center flex flex-col p-8 rounded-lg shadow-md w-full max-w-md">
+      <div className="text-center flex flex-col p-8 rounded-lg w-full max-w-md">
         <h1>Start manifesting your visions</h1>
         <div className="mb-4 text-gray-600 text-center">
           {user ? <p>You're logged in as {user.email}</p> : <p>Sign up to start manifesting!</p>}

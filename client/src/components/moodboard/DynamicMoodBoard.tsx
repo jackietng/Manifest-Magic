@@ -181,10 +181,10 @@ export default function DynamicMoodBoard({
       }));
 
       setItems((prev) => prev.length > 0 ? prev : loadedItems);
-      setBoardLoading(false);
 
       setTimeout(() => {
         calculateAndSetScale(board.board_width || null, board.board_height || null);
+        setBoardLoading(false);
       }, 0);
     };
 
@@ -426,10 +426,38 @@ export default function DynamicMoodBoard({
         }
       }
 
-      const link = document.createElement("a");
-      link.download = `${boardName}.jpg`;
-      link.href = canvas.toDataURL("image/jpeg", 0.9);
-      link.click();
+      const dataUrl = canvas.toDataURL("image/jpeg", 0.9);
+      const isMobile = window.innerWidth < 640;
+
+      if (isMobile) {
+        // On mobile open in new tab so user can long-press to save to Photos
+        const newTab = window.open();
+        if (newTab) {
+          newTab.document.write(`
+            <html>
+              <head>
+                <meta name="viewport" content="width=device-width, initial-scale=1">
+                <title>${boardName}</title>
+                <style>
+                  body { margin: 0; background: #000; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; }
+                  img { max-width: 100%; height: auto; }
+                  p { color: white; font-family: sans-serif; font-size: 14px; margin-top: 16px; opacity: 0.7; text-align: center; padding: 0 16px; }
+                </style>
+              </head>
+              <body>
+                <img src="${dataUrl}" alt="${boardName}" />
+                <p>Long press the image and tap "Add to Photos" to save it to your photo library ✨</p>
+              </body>
+            </html>
+          `);
+          newTab.document.close();
+        }
+      } else {
+        const link = document.createElement("a");
+        link.download = `${boardName}.jpg`;
+        link.href = dataUrl;
+        link.click();
+      }
 
     } catch (err) {
       console.error("Download failed:", err);

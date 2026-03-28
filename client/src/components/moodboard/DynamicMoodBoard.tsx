@@ -91,7 +91,9 @@ export default function DynamicMoodBoard({
   ) => {
     if (!boardContainerRef.current) return;
     const containerWidth = boardContainerRef.current.offsetWidth;
-    const viewportHeight = window.innerHeight * 0.8;
+    const viewportHeight = window.innerHeight < 640
+      ? window.innerHeight * 0.92
+      : window.innerHeight * 0.8;
     const referenceWidth = originalWidth || BOARD_MIN_WIDTH;
     const referenceHeight = originalHeight || viewportHeight;
 
@@ -563,7 +565,7 @@ export default function DynamicMoodBoard({
                   : "100%",
                 height: boardOriginalHeight
                   ? `${boardOriginalHeight * boardScale}px`
-                  : `calc(80vh * ${boardScale})`,
+                  : `calc(${window.innerWidth < 640 ? "92vh" : "80vh"} * ${boardScale})`,
                 overflow: "hidden",
                 borderRadius: "0.75rem",
               }}
@@ -578,7 +580,7 @@ export default function DynamicMoodBoard({
                     : "100%",
                   height: boardOriginalHeight
                     ? `${boardOriginalHeight}px`
-                    : "80vh",
+                    : window.innerWidth < 640 ? "92vh" : "80vh",
                   transformOrigin: "top left",
                   transform: `scale(${boardScale})`,
                   overflow: "hidden",

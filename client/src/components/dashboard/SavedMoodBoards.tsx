@@ -55,7 +55,8 @@ const toBase64 = (url: string): Promise<string> => {
   });
 };
 
-// Draws all items onto a canvas context at full resolution
+// Draws all items onto a canvas context at full (unscaled) board resolution.
+// Item coordinates are already in board space — draw them directly.
 const drawBoardToCanvas = async (
   ctx: CanvasRenderingContext2D,
   items: MoodBoardItem[],
@@ -73,6 +74,7 @@ const drawBoardToCanvas = async (
       await new Promise<void>((resolve) => {
         const img = new Image();
         img.onload = () => {
+          // Draw at saved coordinates — these are already in unscaled board space
           ctx.drawImage(img, item.x, item.y, item.width, item.height);
           resolve();
         };
@@ -105,14 +107,11 @@ const drawBoardToCanvas = async (
       if (currentLine) lines.push(currentLine);
 
       const totalHeight = lines.length * lineHeight;
-      const startY = item.y + (item.height - totalHeight) / 2 + lineHeight / 2;
+      const startY =
+        item.y + (item.height - totalHeight) / 2 + lineHeight / 2;
 
       lines.forEach((line, i) => {
-        ctx.fillText(
-          line,
-          item.x + item.width / 2,
-          startY + i * lineHeight
-        );
+        ctx.fillText(line, item.x + item.width / 2, startY + i * lineHeight);
       });
     }
   }
@@ -140,11 +139,14 @@ export default function SavedMoodBoards() {
     backgroundColor: isDark ? "#1a1428" : "#ffffff",
     color: textColor,
   };
-  const btnBase = "px-3 py-1 text-white rounded-lg text-sm hover:opacity-80 transition-opacity";
+  const btnBase =
+    "px-3 py-1 text-white rounded-lg text-sm hover:opacity-80 transition-opacity";
 
   useEffect(() => {
     const fetchBoards = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
       if (!user) return;
 
       const { data, error } = await supabase
@@ -161,13 +163,16 @@ export default function SavedMoodBoards() {
   }, []);
 
   const handlePreview = async (board: MoodBoard) => {
+    setPreview(null);
     setPreviewReady(false);
+
     const { data, error } = await supabase
       .from("moodboard_items")
       .select("type, content, x, y, width, height, zIndex")
       .eq("board_id", board.id);
 
     if (!error && data) {
+      // Convert external images to base64 so the canvas can draw them
       const itemsWithBase64 = await Promise.all(
         data.map(async (item) => {
           if (item.type === "image") {
@@ -182,11 +187,9 @@ export default function SavedMoodBoards() {
   };
 
   const getBoardDimensions = (board: MoodBoard, items: MoodBoardItem[]) => {
-    // Always prefer saved board dimensions
     if (board.board_width && board.board_height) {
       return { width: board.board_width, height: board.board_height };
     }
-    // Fallback: calculate from items with generous padding
     if (items.length === 0) return { width: 600, height: 400 };
     const maxX = Math.max(...items.map((item) => item.x + item.width));
     const maxY = Math.max(...items.map((item) => item.y + item.height));
@@ -196,29 +199,41 @@ export default function SavedMoodBoards() {
     };
   };
 
+  // Scale the DISPLAY size of the canvas to fit the modal — never touch drawing coordinates
   const getPreviewScale = (boardWidth: number, boardHeight: number) => {
-    const modalWidth = Math.min(window.innerWidth * 0.9, 800) - 32;
-    const modalHeight = window.innerHeight * 0.6;
+    const isMobile = window.innerWidth < 640;
+    const modalWidth = isMobile
+      ? window.innerWidth - 32          // full-width with padding on mobile
+      : Math.min(window.innerWidth * 0.9, 800) - 32;
+    const modalHeight = window.innerHeight * (isMobile ? 0.5 : 0.6);
     const widthScale = modalWidth / boardWidth;
     const heightScale = modalHeight / boardHeight;
     return Math.min(1, widthScale, heightScale);
   };
 
-  // Draw preview onto canvas whenever preview changes
+  // Draw preview: canvas resolution = full board size, CSS size = scaled to fit modal
   useEffect(() => {
     if (!preview || !previewRef.current) return;
 
     const dimensions = getBoardDimensions(preview.board, preview.items);
     const canvas = previewRef.current;
+
+    // Set canvas drawing resolution to the true board size
     canvas.width = dimensions.width;
     canvas.height = dimensions.height;
+
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
     setPreviewReady(false);
 
-    drawBoardToCanvas(ctx, preview.items, dimensions.width, dimensions.height, isDark)
-      .then(() => setPreviewReady(true));
+    drawBoardToCanvas(
+      ctx,
+      preview.items,
+      dimensions.width,
+      dimensions.height,
+      isDark
+    ).then(() => setPreviewReady(true));
   }, [preview, isDark]);
 
   const handleDownload = async () => {
@@ -233,7 +248,6 @@ export default function SavedMoodBoards() {
       const ctx = canvas.getContext("2d");
       if (!ctx) throw new Error("Could not get canvas context");
 
-      // Wait for all items to finish drawing before downloading
       await drawBoardToCanvas(
         ctx,
         preview.items,
@@ -284,10 +298,7 @@ export default function SavedMoodBoards() {
   const handleDelete = async (id: string) => {
     if (!confirm("Delete this mood board?")) return;
 
-    const { error } = await supabase
-      .from("moodboards")
-      .delete()
-      .eq("id", id);
+    const { error } = await supabase.from("moodboards").delete().eq("id", id);
 
     if (!error) {
       setBoards((prev) => prev.filter((b) => b.id !== id));
@@ -295,11 +306,12 @@ export default function SavedMoodBoards() {
     }
   };
 
-  if (loading) return (
-    <p className="text-center" style={{ color: mutedColor }}>
-      Loading saved boards...
-    </p>
-  );
+  if (loading)
+    return (
+      <p className="text-center" style={{ color: mutedColor }}>
+        Loading saved boards...
+      </p>
+    );
 
   const boardDimensions = preview
     ? getBoardDimensions(preview.board, preview.items)
@@ -417,14 +429,18 @@ export default function SavedMoodBoards() {
                   Loading preview...
                 </p>
               )}
+              {/*
+                Canvas draws at full board resolution (canvas.width/height).
+                We scale the DISPLAY size via CSS only — this prevents clipping
+                and keeps coordinates correct.
+              */}
               <canvas
                 ref={previewRef}
-                width={boardDimensions.width}
-                height={boardDimensions.height}
                 style={{
                   display: previewReady ? "block" : "none",
-                  width: boardDimensions.width * previewScale,
-                  height: boardDimensions.height * previewScale,
+                  // CSS display size = board size × scale factor
+                  width: `${boardDimensions.width * previewScale}px`,
+                  height: `${boardDimensions.height * previewScale}px`,
                 }}
               />
             </div>
@@ -440,7 +456,9 @@ export default function SavedMoodBoards() {
                 {downloading ? "Downloading..." : "Download"}
               </button>
               <button
-                onClick={() => navigate(`/moodboard?board=${preview.board.id}`)}
+                onClick={() =>
+                  navigate(`/moodboard?board=${preview.board.id}`)
+                }
                 className="flex-1 py-2 text-white rounded-xl hover:opacity-80 transition-opacity text-sm"
                 style={{ backgroundColor: "var(--primary)" }}
               >

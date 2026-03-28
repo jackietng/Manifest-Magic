@@ -47,7 +47,8 @@ const toBase64ViaProxy = (url: string): Promise<string> => {
   });
 };
 
-const btnBase = "px-3 py-2 text-white rounded-xl transition-opacity hover:opacity-80 disabled:opacity-50 text-sm";
+const btnBase =
+  "px-3 py-2 text-white rounded-xl transition-opacity hover:opacity-80 disabled:opacity-50 text-sm";
 
 export default function DynamicMoodBoard({
   setSidebarOpen,
@@ -75,7 +76,6 @@ export default function DynamicMoodBoard({
   const boardWrapperRef = useRef<HTMLDivElement>(null);
   const boardContainerRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  // Ref to always have current scale value inside callbacks
   const boardScaleRef = useRef(1);
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -89,34 +89,34 @@ export default function DynamicMoodBoard({
     color: isDark ? "var(--snow)" : "var(--primary)",
   };
 
-  // Keep boardScaleRef in sync with boardScale state
   useEffect(() => {
     boardScaleRef.current = boardScale;
   }, [boardScale]);
 
-  const calculateAndSetScale = useCallback((
-    originalWidth: number | null,
-    originalHeight: number | null
-  ) => {
-    if (!boardContainerRef.current) return;
-    const containerWidth = boardContainerRef.current.offsetWidth;
-    const viewportHeight = window.innerWidth < 640
-      ? window.innerHeight * 0.92
-      : window.innerHeight * 0.8;
-    const referenceWidth = originalWidth || BOARD_MIN_WIDTH;
-    const referenceHeight = originalHeight || viewportHeight;
+  // Returns the computed scale value directly so callers can use it immediately
+  const calculateAndSetScale = useCallback(
+    (originalWidth: number | null, originalHeight: number | null): number => {
+      if (!boardContainerRef.current) return 1;
+      const containerWidth = boardContainerRef.current.offsetWidth;
+      const viewportHeight =
+        window.innerWidth < 640
+          ? window.innerHeight * 0.92
+          : window.innerHeight * 0.8;
+      const referenceWidth = originalWidth || BOARD_MIN_WIDTH;
+      const referenceHeight = originalHeight || viewportHeight;
 
-    const widthScale = containerWidth < referenceWidth
-      ? containerWidth / referenceWidth
-      : 1;
-    const heightScale = viewportHeight < referenceHeight
-      ? viewportHeight / referenceHeight
-      : 1;
+      const widthScale =
+        containerWidth < referenceWidth ? containerWidth / referenceWidth : 1;
+      const heightScale =
+        viewportHeight < referenceHeight ? viewportHeight / referenceHeight : 1;
 
-    const scale = Math.min(widthScale, heightScale);
-    setBoardScale(scale);
-    boardScaleRef.current = scale;
-  }, []);
+      const scale = Math.min(widthScale, heightScale);
+      setBoardScale(scale);
+      boardScaleRef.current = scale;
+      return scale;
+    },
+    []
+  );
 
   useEffect(() => {
     const handleResize = () => {
@@ -165,8 +165,12 @@ export default function DynamicMoodBoard({
 
       setBoardName(board.name);
       setBoardMood(board.mood || "");
-      setBoardOriginalWidth(board.board_width || null);
-      setBoardOriginalHeight(board.board_height || null);
+
+      const savedWidth = board.board_width || null;
+      const savedHeight = board.board_height || null;
+
+      setBoardOriginalWidth(savedWidth);
+      setBoardOriginalHeight(savedHeight);
 
       const { data: boardItems, error: itemsError } = await supabase
         .from("moodboard_items")
@@ -179,24 +183,34 @@ export default function DynamicMoodBoard({
         return;
       }
 
-      const loadedItems: MoodItemType[] = (boardItems || []).map((item, index) => ({
-        id: uuid(),
-        type: item.type,
-        content: item.content,
-        x: item.x,
-        y: item.y,
-        width: item.width,
-        height: item.height,
-        zIndex: item.zIndex || index + 1,
-      }));
-
-      setItems((prev) => prev.length > 0 ? prev : loadedItems);
-
-      // Double rAF ensures DOM has fully painted before measuring and showing
+      // Double rAF: wait for DOM to paint and container to have real dimensions
+      // before calculating scale — then set items so they render at correct positions
       requestAnimationFrame(() => {
         requestAnimationFrame(() => {
-          calculateAndSetScale(board.board_width || null, board.board_height || null);
+          // Calculate scale FIRST, get the value synchronously
+          const computedScale = calculateAndSetScale(savedWidth, savedHeight);
+
+          const loadedItems: MoodItemType[] = (boardItems || []).map(
+            (item, index) => ({
+              id: uuid(),
+              type: item.type,
+              content: item.content,
+              // Items are saved in unscaled board coordinates — load them as-is
+              x: item.x,
+              y: item.y,
+              width: item.width,
+              height: item.height,
+              zIndex: item.zIndex || index + 1,
+            })
+          );
+
+          // Set items AFTER scale is known so MoodItem renders with correct scaled props
+          setItems((prev) => (prev.length > 0 ? prev : loadedItems));
           setBoardLoading(false);
+
+          // Keep scale ref in sync (calculateAndSetScale already does this,
+          // but be explicit since we depend on it for new item placement)
+          boardScaleRef.current = computedScale;
         });
       });
     };
@@ -204,82 +218,82 @@ export default function DynamicMoodBoard({
     loadBoard();
   }, [boardId, calculateAndSetScale]);
 
-  const addItem = useCallback((type: "image" | "text", content: string) => {
-    if (!content.trim()) return;
+  const addItem = useCallback(
+    (type: "image" | "text", content: string) => {
+      if (!content.trim()) return;
 
-    // Use boardScaleRef so new items are placed in unscaled board coordinates
-    const currentScale = boardScaleRef.current;
+      const currentScale = boardScaleRef.current;
 
-    if (type === "image") {
-      const isSupabaseImage = content.includes("supabase.co");
-      const proxyUrl = isSupabaseImage
-        ? content
-        : `${PROXY_URL}/proxy-image?url=${encodeURIComponent(content)}`;
+      if (type === "image") {
+        const isSupabaseImage = content.includes("supabase.co");
+        const proxyUrl = isSupabaseImage
+          ? content
+          : `${PROXY_URL}/proxy-image?url=${encodeURIComponent(content)}`;
 
-      const img = new Image();
-      img.crossOrigin = "anonymous";
-      img.src = proxyUrl;
+        const img = new Image();
+        img.crossOrigin = "anonymous";
+        img.src = proxyUrl;
 
-      img.onload = async () => {
-        try {
-          await img.decode();
-        } catch {
-          // decode not supported, continue anyway
-        }
-
-        const maxDimension = 300;
-        const naturalWidth = img.naturalWidth || img.width;
-        const naturalHeight = img.naturalHeight || img.height;
-        const ratio = naturalWidth / naturalHeight;
-
-        let width = naturalWidth;
-        let height = naturalHeight;
-
-        if (width > maxDimension || height > maxDimension) {
-          if (width > height) {
-            width = maxDimension;
-            height = Math.round(maxDimension / ratio);
-          } else {
-            height = maxDimension;
-            width = Math.round(maxDimension * ratio);
+        img.onload = async () => {
+          try {
+            await img.decode();
+          } catch {
+            // decode not supported, continue anyway
           }
-        }
 
-        const newItem: MoodItemType = {
-          id: uuid(),
-          type: "image",
-          content: proxyUrl,
-          // Place in unscaled board coordinates
-          x: Math.round(100 / currentScale),
-          y: Math.round(100 / currentScale),
-          width,
-          height,
-          zIndex: items.length + 1,
+          const maxDimension = 300;
+          const naturalWidth = img.naturalWidth || img.width;
+          const naturalHeight = img.naturalHeight || img.height;
+          const ratio = naturalWidth / naturalHeight;
+
+          let width = naturalWidth;
+          let height = naturalHeight;
+
+          if (width > maxDimension || height > maxDimension) {
+            if (width > height) {
+              width = maxDimension;
+              height = Math.round(maxDimension / ratio);
+            } else {
+              height = maxDimension;
+              width = Math.round(maxDimension * ratio);
+            }
+          }
+
+          const newItem: MoodItemType = {
+            id: uuid(),
+            type: "image",
+            content: proxyUrl,
+            x: Math.round(100 / currentScale),
+            y: Math.round(100 / currentScale),
+            width,
+            height,
+            zIndex: items.length + 1,
+          };
+
+          setItems((prev) => [...prev, newItem]);
+          setImageUrl("");
         };
 
+        img.onerror = () => {
+          alert("Failed to load image. Please check the URL.");
+        };
+      } else {
+        const newItem: MoodItemType = {
+          id: uuid(),
+          type: "text",
+          content,
+          x: Math.round(100 / currentScale),
+          y: Math.round(100 / currentScale),
+          width: Math.round(200 / currentScale),
+          height: Math.round(60 / currentScale),
+          zIndex: items.length + 1,
+        };
         setItems((prev) => [...prev, newItem]);
-        setImageUrl("");
-      };
-
-      img.onerror = () => {
-        alert("Failed to load image. Please check the URL.");
-      };
-    } else {
-      const newItem: MoodItemType = {
-        id: uuid(),
-        type: "text",
-        content,
-        // Place in unscaled board coordinates
-        x: Math.round(100 / currentScale),
-        y: Math.round(100 / currentScale),
-        width: Math.round(200 / currentScale),
-        height: Math.round(60 / currentScale),
-        zIndex: items.length + 1,
-      };
-      setItems((prev) => [...prev, newItem]);
-      setTextInput("");
-    }
-  }, [items.length]);
+        setTextInput("");
+      }
+    },
+    [items.length]
+  );
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -300,9 +314,9 @@ export default function DynamicMoodBoard({
       return;
     }
 
-    const { data: { publicUrl } } = supabase.storage
-      .from("moodboard-images")
-      .getPublicUrl(fileName);
+    const {
+      data: { publicUrl },
+    } = supabase.storage.from("moodboard-images").getPublicUrl(fileName);
 
     addItem("image", publicUrl);
     setUploading(false);
@@ -312,9 +326,7 @@ export default function DynamicMoodBoard({
 
   const updateItem = (id: string, changes: Partial<MoodItemType>) => {
     setItems((prev) =>
-      prev.map((item) =>
-        item.id === id ? { ...item, ...changes } : item
-      )
+      prev.map((item) => (item.id === id ? { ...item, ...changes } : item))
     );
   };
 
@@ -340,7 +352,10 @@ export default function DynamicMoodBoard({
       const newMin = Math.min(...updated.map((item) => item.zIndex));
       if (newMin < 1) {
         const offset = 1 - newMin;
-        return updated.map((item) => ({ ...item, zIndex: item.zIndex + offset }));
+        return updated.map((item) => ({
+          ...item,
+          zIndex: item.zIndex + offset,
+        }));
       }
       return updated;
     });
@@ -368,11 +383,11 @@ export default function DynamicMoodBoard({
       }
 
       const referenceWidth = boardOriginalWidth || BOARD_MIN_WIDTH;
-      const boardHeight = boardOriginalHeight ||
+      const boardHeight =
+        boardOriginalHeight ||
         Math.round(boardRef.current.offsetHeight / boardScaleRef.current);
-      const boardWidth = boardScale < 1
-        ? referenceWidth
-        : boardRef.current.offsetWidth;
+      const boardWidth =
+        boardScale < 1 ? referenceWidth : boardRef.current.offsetWidth;
 
       const itemsWithBase64 = await Promise.all(
         items.map(async (item) => {
@@ -384,7 +399,9 @@ export default function DynamicMoodBoard({
         })
       );
 
-      const sortedItems = [...itemsWithBase64].sort((a, b) => a.zIndex - b.zIndex);
+      const sortedItems = [...itemsWithBase64].sort(
+        (a, b) => a.zIndex - b.zIndex
+      );
 
       const canvas = document.createElement("canvas");
       canvas.width = boardWidth;
@@ -408,7 +425,10 @@ export default function DynamicMoodBoard({
             img.src = item.content;
           });
         } else {
-          const fontSize = Math.max(12, Math.min(item.width, item.height) * 0.14);
+          const fontSize = Math.max(
+            12,
+            Math.min(item.width, item.height) * 0.14
+          );
           ctx.font = `bold ${fontSize}px Inter, sans-serif`;
           ctx.fillStyle = isDark ? "#f4f1f0" : "#544683";
           ctx.textAlign = "center";
@@ -421,7 +441,9 @@ export default function DynamicMoodBoard({
           let currentLine = "";
 
           for (const word of words) {
-            const testLine = currentLine ? `${currentLine} ${word}` : word;
+            const testLine = currentLine
+              ? `${currentLine} ${word}`
+              : word;
             const metrics = ctx.measureText(testLine);
             if (metrics.width > maxWidth && currentLine) {
               lines.push(currentLine);
@@ -433,7 +455,8 @@ export default function DynamicMoodBoard({
           if (currentLine) lines.push(currentLine);
 
           const totalHeight = lines.length * lineHeight;
-          const startY = item.y + (item.height - totalHeight) / 2 + lineHeight / 2;
+          const startY =
+            item.y + (item.height - totalHeight) / 2 + lineHeight / 2;
 
           lines.forEach((line, i) => {
             ctx.fillText(
@@ -476,7 +499,6 @@ export default function DynamicMoodBoard({
         link.href = dataUrl;
         link.click();
       }
-
     } catch (err) {
       console.error("Download failed:", err);
       alert("Download failed. Please try again.");
@@ -502,22 +524,25 @@ export default function DynamicMoodBoard({
 
     setSaving(true);
 
-    // Always save ORIGINAL unscaled board dimensions
+    // Save ORIGINAL unscaled board dimensions
     const savedWidth = boardOriginalWidth || BOARD_MIN_WIDTH;
-    const savedHeight = boardOriginalHeight ||
+    const savedHeight =
+      boardOriginalHeight ||
       (boardRef.current
         ? Math.round(boardRef.current.offsetHeight / boardScaleRef.current)
         : 0);
 
     const { data: board, error: boardError } = await supabase
       .from("moodboards")
-      .insert([{
-        user_id: user.id,
-        name: boardName,
-        mood: mood || "",
-        board_width: savedWidth,
-        board_height: savedHeight,
-      }])
+      .insert([
+        {
+          user_id: user.id,
+          name: boardName,
+          mood: mood || "",
+          board_width: savedWidth,
+          board_height: savedHeight,
+        },
+      ])
       .select()
       .single();
 
@@ -528,6 +553,7 @@ export default function DynamicMoodBoard({
       return;
     }
 
+    // Items are already in unscaled board coordinates — save them directly
     const formattedItems = items.map((item) => ({
       board_id: board.id,
       type: item.type,
@@ -572,7 +598,7 @@ export default function DynamicMoodBoard({
         </div>
       ) : (
         <>
-          {/* Board name — always visible */}
+          {/* Board name */}
           <div className="px-2 sm:px-4 pt-2 sm:pt-4 mb-2 sm:mb-3 flex flex-col gap-2">
             <input
               placeholder="Board name"
@@ -598,7 +624,9 @@ export default function DynamicMoodBoard({
             {saved && (
               <p
                 className="text-center text-sm"
-                style={{ color: isDark ? "var(--lavender)" : "var(--primary)" }}
+                style={{
+                  color: isDark ? "var(--lavender)" : "var(--primary)",
+                }}
               >
                 Board saved! ✨
               </p>
@@ -606,17 +634,23 @@ export default function DynamicMoodBoard({
           </div>
 
           {/* Board */}
-          <div ref={boardContainerRef} className="w-full flex justify-center px-2 sm:px-4">
+          <div
+            ref={boardContainerRef}
+            className="w-full flex justify-center px-2 sm:px-4"
+          >
             <div
               ref={boardWrapperRef}
               className="rounded-xl shadow"
               style={{
-                width: boardScale < 1
-                  ? `${(boardOriginalWidth || BOARD_MIN_WIDTH) * boardScale}px`
-                  : "100%",
+                width:
+                  boardScale < 1
+                    ? `${(boardOriginalWidth || BOARD_MIN_WIDTH) * boardScale}px`
+                    : "100%",
                 height: boardOriginalHeight
                   ? `${boardOriginalHeight * boardScale}px`
-                  : `calc(${window.innerWidth < 640 ? "92vh" : "80vh"} * ${boardScale})`,
+                  : `calc(${
+                      window.innerWidth < 640 ? "92vh" : "80vh"
+                    } * ${boardScale})`,
                 overflow: "hidden",
                 borderRadius: "0.75rem",
               }}
@@ -626,12 +660,15 @@ export default function DynamicMoodBoard({
                 className="relative"
                 style={{
                   backgroundColor: isDark ? "#2a223a" : "var(--snow)",
-                  width: boardScale < 1
-                    ? `${boardOriginalWidth || BOARD_MIN_WIDTH}px`
-                    : "100%",
+                  width:
+                    boardScale < 1
+                      ? `${boardOriginalWidth || BOARD_MIN_WIDTH}px`
+                      : "100%",
                   height: boardOriginalHeight
                     ? `${boardOriginalHeight}px`
-                    : window.innerWidth < 640 ? "92vh" : "80vh",
+                    : window.innerWidth < 640
+                    ? "92vh"
+                    : "80vh",
                   transformOrigin: "top left",
                   transform: `scale(${boardScale})`,
                   overflow: "hidden",
@@ -661,7 +698,7 @@ export default function DynamicMoodBoard({
             </div>
           </div>
 
-          {/* Desktop add content controls */}
+          {/* Desktop controls */}
           <div className="hidden sm:flex flex-col gap-3 px-4 mt-3">
             <div className="flex gap-2 flex-wrap">
               <input
@@ -720,27 +757,40 @@ export default function DynamicMoodBoard({
             </div>
           </div>
 
-          {/* BOTTOM TOOLBAR */}
+          {/* Bottom toolbar */}
           <div
-            className={`fixed sm:relative bottom-0 left-0 right-0 sm:mt-3 sm:z-auto px-3 py-3 sm:px-4 sm:py-0 flex items-center gap-2 sm:justify-center sm:flex-wrap transition-all duration-300 ${sidebarOpen ? "z-30" : "z-50"}`}
+            className={`fixed sm:relative bottom-0 left-0 right-0 sm:mt-3 sm:z-auto px-3 py-3 sm:px-4 sm:py-0 flex items-center gap-2 sm:justify-center sm:flex-wrap transition-all duration-300 ${
+              sidebarOpen ? "z-30" : "z-50"
+            }`}
             style={{
-              backgroundColor: window.innerWidth < 640
-                ? isDark
-                  ? "rgba(26, 20, 40, 0.97)"
-                  : "rgba(255, 255, 255, 0.97)"
-                : "transparent",
-              borderTop: window.innerWidth < 640
-                ? `1px solid ${isDark ? "rgba(255,255,255,0.1)" : "rgba(84,70,131,0.15)"}`
-                : "none",
-              backdropFilter: window.innerWidth < 640 ? "blur(8px)" : "none",
-              WebkitBackdropFilter: window.innerWidth < 640 ? "blur(8px)" : "none",
+              backgroundColor:
+                window.innerWidth < 640
+                  ? isDark
+                    ? "rgba(26, 20, 40, 0.97)"
+                    : "rgba(255, 255, 255, 0.97)"
+                  : "transparent",
+              borderTop:
+                window.innerWidth < 640
+                  ? `1px solid ${
+                      isDark
+                        ? "rgba(255,255,255,0.1)"
+                        : "rgba(84,70,131,0.15)"
+                    }`
+                  : "none",
+              backdropFilter:
+                window.innerWidth < 640 ? "blur(8px)" : "none",
+              WebkitBackdropFilter:
+                window.innerWidth < 640 ? "blur(8px)" : "none",
             }}
           >
             {/* Mobile Add button */}
             <button
               onClick={() => setControlsOpen((prev) => !prev)}
               className="sm:hidden flex flex-col items-center gap-1 px-3 py-1 rounded-xl transition-opacity hover:opacity-80"
-              style={{ color: isDark ? "var(--snow)" : "var(--primary)", minWidth: "60px" }}
+              style={{
+                color: isDark ? "var(--snow)" : "var(--primary)",
+                minWidth: "60px",
+              }}
             >
               <span style={{ fontSize: "1.3rem" }}>＋</span>
               <span style={{ fontSize: "10px", fontWeight: 600 }}>Add</span>
@@ -752,15 +802,24 @@ export default function DynamicMoodBoard({
               disabled={saving}
               className="flex flex-col items-center gap-1 px-3 py-1 rounded-xl transition-opacity hover:opacity-80 disabled:opacity-50 flex-1 sm:flex-none sm:px-4 sm:py-2"
               style={{
-                backgroundColor: window.innerWidth < 640 ? "transparent" : "var(--plum)",
-                color: window.innerWidth < 640
-                  ? isDark ? "var(--snow)" : "var(--primary)"
-                  : "white",
+                backgroundColor:
+                  window.innerWidth < 640 ? "transparent" : "var(--plum)",
+                color:
+                  window.innerWidth < 640
+                    ? isDark
+                      ? "var(--snow)"
+                      : "var(--primary)"
+                    : "white",
                 minWidth: "60px",
               }}
             >
-              <span className="sm:hidden" style={{ fontSize: "1.3rem" }}>💾</span>
-              <span style={{ fontSize: "10px", fontWeight: 600 }} className="sm:hidden">
+              <span className="sm:hidden" style={{ fontSize: "1.3rem" }}>
+                💾
+              </span>
+              <span
+                style={{ fontSize: "10px", fontWeight: 600 }}
+                className="sm:hidden"
+              >
                 {saving ? "Saving..." : "Save"}
               </span>
               <span className="hidden sm:inline text-sm">
@@ -773,15 +832,26 @@ export default function DynamicMoodBoard({
               onClick={clearBoard}
               className="flex flex-col items-center gap-1 px-3 py-1 rounded-xl transition-opacity hover:opacity-80 flex-1 sm:flex-none sm:px-4 sm:py-2"
               style={{
-                backgroundColor: window.innerWidth < 640 ? "transparent" : "var(--rose)",
-                color: window.innerWidth < 640
-                  ? isDark ? "var(--snow)" : "var(--primary)"
-                  : "white",
+                backgroundColor:
+                  window.innerWidth < 640 ? "transparent" : "var(--rose)",
+                color:
+                  window.innerWidth < 640
+                    ? isDark
+                      ? "var(--snow)"
+                      : "var(--primary)"
+                    : "white",
                 minWidth: "60px",
               }}
             >
-              <span className="sm:hidden" style={{ fontSize: "1.3rem" }}>🗑️</span>
-              <span style={{ fontSize: "10px", fontWeight: 600 }} className="sm:hidden">Clear</span>
+              <span className="sm:hidden" style={{ fontSize: "1.3rem" }}>
+                🗑️
+              </span>
+              <span
+                style={{ fontSize: "10px", fontWeight: 600 }}
+                className="sm:hidden"
+              >
+                Clear
+              </span>
               <span className="hidden sm:inline text-sm">Clear Board</span>
             </button>
 
@@ -791,15 +861,26 @@ export default function DynamicMoodBoard({
               disabled={downloading}
               className="flex flex-col items-center gap-1 px-3 py-1 rounded-xl transition-opacity hover:opacity-80 disabled:opacity-50 flex-1 sm:flex-none sm:px-4 sm:py-2"
               style={{
-                backgroundColor: window.innerWidth < 640 ? "transparent" : "var(--lavender)",
-                color: window.innerWidth < 640
-                  ? isDark ? "var(--snow)" : "var(--primary)"
-                  : "white",
+                backgroundColor:
+                  window.innerWidth < 640
+                    ? "transparent"
+                    : "var(--lavender)",
+                color:
+                  window.innerWidth < 640
+                    ? isDark
+                      ? "var(--snow)"
+                      : "var(--primary)"
+                    : "white",
                 minWidth: "60px",
               }}
             >
-              <span className="sm:hidden" style={{ fontSize: "1.3rem" }}>⬇️</span>
-              <span style={{ fontSize: "10px", fontWeight: 600 }} className="sm:hidden">
+              <span className="sm:hidden" style={{ fontSize: "1.3rem" }}>
+                ⬇️
+              </span>
+              <span
+                style={{ fontSize: "10px", fontWeight: 600 }}
+                className="sm:hidden"
+              >
                 {downloading ? "..." : "Download"}
               </span>
               <span className="hidden sm:inline text-sm">
@@ -814,20 +895,28 @@ export default function DynamicMoodBoard({
               className="sm:hidden fixed bottom-16 left-0 right-0 z-40 p-4 rounded-t-2xl shadow-2xl flex flex-col gap-3"
               style={{
                 backgroundColor: isDark ? "#1a1428" : "#f9f6ff",
-                borderTop: `1px solid ${isDark ? "rgba(255,255,255,0.1)" : "rgba(84,70,131,0.15)"}`,
+                borderTop: `1px solid ${
+                  isDark
+                    ? "rgba(255,255,255,0.1)"
+                    : "rgba(84,70,131,0.15)"
+                }`,
               }}
             >
               <div className="flex items-center justify-between mb-1">
                 <span
                   className="font-semibold text-sm"
-                  style={{ color: isDark ? "var(--snow)" : "var(--primary)" }}
+                  style={{
+                    color: isDark ? "var(--snow)" : "var(--primary)",
+                  }}
                 >
                   Add Content
                 </span>
                 <button
                   onClick={() => setControlsOpen(false)}
                   className="text-lg font-bold hover:opacity-60"
-                  style={{ color: isDark ? "var(--snow)" : "var(--primary)" }}
+                  style={{
+                    color: isDark ? "var(--snow)" : "var(--primary)",
+                  }}
                 >
                   ×
                 </button>

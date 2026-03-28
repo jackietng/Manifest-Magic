@@ -382,12 +382,10 @@ export default function DynamicMoodBoard({
         await new Promise((res) => setTimeout(res, 350));
       }
 
-      const referenceWidth = boardOriginalWidth || BOARD_MIN_WIDTH;
-      const boardHeight =
-        boardOriginalHeight ||
-        Math.round(boardRef.current.offsetHeight / boardScaleRef.current);
-      const boardWidth =
-        boardScale < 1 ? referenceWidth : boardRef.current.offsetWidth;
+      // offsetHeight/offsetWidth report unscaled layout size — read directly
+      const referenceWidth = boardOriginalWidth || boardRef.current?.offsetWidth || BOARD_MIN_WIDTH;
+      const boardHeight = boardOriginalHeight || boardRef.current?.offsetHeight || 0;
+      const boardWidth = referenceWidth;
 
       const itemsWithBase64 = await Promise.all(
         items.map(async (item) => {
@@ -524,13 +522,11 @@ export default function DynamicMoodBoard({
 
     setSaving(true);
 
-    // Save ORIGINAL unscaled board dimensions
-    const savedWidth = boardOriginalWidth || BOARD_MIN_WIDTH;
-    const savedHeight =
-      boardOriginalHeight ||
-      (boardRef.current
-        ? Math.round(boardRef.current.offsetHeight / boardScaleRef.current)
-        : 0);
+    // Save ORIGINAL unscaled board dimensions.
+    // offsetHeight/offsetWidth report the element's layout size BEFORE CSS scale(),
+    // so we read them directly — do NOT divide by boardScale.
+    const savedWidth = boardOriginalWidth || boardRef.current?.offsetWidth || BOARD_MIN_WIDTH;
+    const savedHeight = boardOriginalHeight || boardRef.current?.offsetHeight || 0;
 
     const { data: board, error: boardError } = await supabase
       .from("moodboards")

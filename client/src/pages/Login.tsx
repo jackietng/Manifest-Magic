@@ -1,7 +1,9 @@
 //src/pages/Login.tsx
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { useTheme } from '../context/ThemeContext';
+
 
 const Login = () => {
   const [email, setEmail] = useState('');
@@ -10,6 +12,16 @@ const Login = () => {
   const [error, setError] = useState('');
   const { signIn } = useAuth();
   const navigate = useNavigate();
+  const { theme } = useTheme();
+
+  const isDark = theme === "dark";
+  const textColor = isDark ? "var(--snow)" : "var(--primary)";
+  const mutedColor = isDark ? "var(--lavender)" : "var(--orchid)";
+  const inputStyle = {
+    backgroundColor: isDark ? "#2a223a" : "var(--snow)",
+    color: isDark ? "var(--snow)" : "var(--primary)",
+    borderColor: isDark ? "var(--violet)" : "var(--plum)",
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -61,9 +73,17 @@ const Login = () => {
             {loading ? 'Logging in...' : 'Log In'}
           </button>
         </form>
-        <p className="mt-4 text-sm text-gray-600 text-center">
+        <p
+          className="mt-6 text-sm text-center"
+          style={{ color: mutedColor }}
+        >
           Don't have an account?{' '}
-          <a href="/signup" className="text-purple-600 hover:text-purple-500">Sign up</a>
+          <Link
+              to="/signup"
+              style={{ color: textColor, fontWeight: 600, textDecoration: "underline" }}
+            >
+              Sign up
+            </Link>
         </p>
       </div>
     </div>

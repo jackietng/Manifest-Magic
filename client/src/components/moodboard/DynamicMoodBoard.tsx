@@ -75,6 +75,8 @@ export default function DynamicMoodBoard({
   const boardWrapperRef = useRef<HTMLDivElement>(null);
   const boardContainerRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  // Ref to always have current scale value inside callbacks
+  const boardScaleRef = useRef(1);
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const boardId = searchParams.get("board");
@@ -87,13 +89,18 @@ export default function DynamicMoodBoard({
     color: isDark ? "var(--snow)" : "var(--primary)",
   };
 
+  // Keep boardScaleRef in sync with boardScale state
+  useEffect(() => {
+    boardScaleRef.current = boardScale;
+  }, [boardScale]);
+
   const calculateAndSetScale = useCallback((
     originalWidth: number | null,
     originalHeight: number | null
   ) => {
     if (!boardContainerRef.current) return;
     const containerWidth = boardContainerRef.current.offsetWidth;
-    const viewportHeight = window.innerHeight < 640
+    const viewportHeight = window.innerWidth < 640
       ? window.innerHeight * 0.92
       : window.innerHeight * 0.8;
     const referenceWidth = originalWidth || BOARD_MIN_WIDTH;
@@ -108,6 +115,7 @@ export default function DynamicMoodBoard({
 
     const scale = Math.min(widthScale, heightScale);
     setBoardScale(scale);
+    boardScaleRef.current = scale;
   }, []);
 
   useEffect(() => {
@@ -184,10 +192,13 @@ export default function DynamicMoodBoard({
 
       setItems((prev) => prev.length > 0 ? prev : loadedItems);
 
-      setTimeout(() => {
-        calculateAndSetScale(board.board_width || null, board.board_height || null);
-        setBoardLoading(false);
-      }, 0);
+      // Double rAF ensures DOM has fully painted before measuring and showing
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          calculateAndSetScale(board.board_width || null, board.board_height || null);
+          setBoardLoading(false);
+        });
+      });
     };
 
     loadBoard();
@@ -195,6 +206,9 @@ export default function DynamicMoodBoard({
 
   const addItem = useCallback((type: "image" | "text", content: string) => {
     if (!content.trim()) return;
+
+    // Use boardScaleRef so new items are placed in unscaled board coordinates
+    const currentScale = boardScaleRef.current;
 
     if (type === "image") {
       const isSupabaseImage = content.includes("supabase.co");
@@ -235,8 +249,9 @@ export default function DynamicMoodBoard({
           id: uuid(),
           type: "image",
           content: proxyUrl,
-          x: 100,
-          y: 100,
+          // Place in unscaled board coordinates
+          x: Math.round(100 / currentScale),
+          y: Math.round(100 / currentScale),
           width,
           height,
           zIndex: items.length + 1,
@@ -254,10 +269,11 @@ export default function DynamicMoodBoard({
         id: uuid(),
         type: "text",
         content,
-        x: 100,
-        y: 100,
-        width: 200,
-        height: 60,
+        // Place in unscaled board coordinates
+        x: Math.round(100 / currentScale),
+        y: Math.round(100 / currentScale),
+        width: Math.round(200 / currentScale),
+        height: Math.round(60 / currentScale),
         zIndex: items.length + 1,
       };
       setItems((prev) => [...prev, newItem]);
@@ -352,7 +368,8 @@ export default function DynamicMoodBoard({
       }
 
       const referenceWidth = boardOriginalWidth || BOARD_MIN_WIDTH;
-      const boardHeight = boardOriginalHeight || boardRef.current.offsetHeight;
+      const boardHeight = boardOriginalHeight ||
+        Math.round(boardRef.current.offsetHeight / boardScaleRef.current);
       const boardWidth = boardScale < 1
         ? referenceWidth
         : boardRef.current.offsetWidth;
@@ -432,7 +449,6 @@ export default function DynamicMoodBoard({
       const isMobile = window.innerWidth < 640;
 
       if (isMobile) {
-        // On mobile open in new tab so user can long-press to save to Photos
         const newTab = window.open();
         if (newTab) {
           newTab.document.write(`
@@ -486,15 +502,21 @@ export default function DynamicMoodBoard({
 
     setSaving(true);
 
-    const boardEl = boardRef.current;
+    // Always save ORIGINAL unscaled board dimensions
+    const savedWidth = boardOriginalWidth || BOARD_MIN_WIDTH;
+    const savedHeight = boardOriginalHeight ||
+      (boardRef.current
+        ? Math.round(boardRef.current.offsetHeight / boardScaleRef.current)
+        : 0);
+
     const { data: board, error: boardError } = await supabase
       .from("moodboards")
       .insert([{
         user_id: user.id,
         name: boardName,
         mood: mood || "",
-        board_width: boardOriginalWidth || boardEl?.offsetWidth || 0,
-        board_height: boardOriginalHeight || boardEl?.offsetHeight || 0,
+        board_width: savedWidth,
+        board_height: savedHeight,
       }])
       .select()
       .single();
@@ -639,7 +661,7 @@ export default function DynamicMoodBoard({
             </div>
           </div>
 
-          {/* Desktop add content controls — above bottom toolbar */}
+          {/* Desktop add content controls */}
           <div className="hidden sm:flex flex-col gap-3 px-4 mt-3">
             <div className="flex gap-2 flex-wrap">
               <input
@@ -698,7 +720,7 @@ export default function DynamicMoodBoard({
             </div>
           </div>
 
-          {/* ── BOTTOM TOOLBAR — fixed on mobile, static on desktop ── */}
+          {/* BOTTOM TOOLBAR */}
           <div
             className={`fixed sm:relative bottom-0 left-0 right-0 sm:mt-3 sm:z-auto px-3 py-3 sm:px-4 sm:py-0 flex items-center gap-2 sm:justify-center sm:flex-wrap transition-all duration-300 ${sidebarOpen ? "z-30" : "z-50"}`}
             style={{
@@ -706,7 +728,7 @@ export default function DynamicMoodBoard({
                 ? isDark
                   ? "rgba(26, 20, 40, 0.97)"
                   : "rgba(255, 255, 255, 0.97)"
-                : "transparent", 
+                : "transparent",
               borderTop: window.innerWidth < 640
                 ? `1px solid ${isDark ? "rgba(255,255,255,0.1)" : "rgba(84,70,131,0.15)"}`
                 : "none",
@@ -714,14 +736,11 @@ export default function DynamicMoodBoard({
               WebkitBackdropFilter: window.innerWidth < 640 ? "blur(8px)" : "none",
             }}
           >
-            {/* Mobile — Add Content button opens sheet */}
+            {/* Mobile Add button */}
             <button
               onClick={() => setControlsOpen((prev) => !prev)}
               className="sm:hidden flex flex-col items-center gap-1 px-3 py-1 rounded-xl transition-opacity hover:opacity-80"
-              style={{
-                color: "white",
-                minWidth: "60px",
-              }}
+              style={{ color: isDark ? "var(--snow)" : "var(--primary)", minWidth: "60px" }}
             >
               <span style={{ fontSize: "1.3rem" }}>＋</span>
               <span style={{ fontSize: "10px", fontWeight: 600 }}>Add</span>
@@ -753,11 +772,13 @@ export default function DynamicMoodBoard({
             <button
               onClick={clearBoard}
               className="flex flex-col items-center gap-1 px-3 py-1 rounded-xl transition-opacity hover:opacity-80 flex-1 sm:flex-none sm:px-4 sm:py-2"
-              style={{ 
-                backgroundColor: window.innerWidth < 640 ? "transparent" : "var(--rose)",                color: window.innerWidth < 640
+              style={{
+                backgroundColor: window.innerWidth < 640 ? "transparent" : "var(--rose)",
+                color: window.innerWidth < 640
                   ? isDark ? "var(--snow)" : "var(--primary)"
                   : "white",
-                minWidth: "60px" }}
+                minWidth: "60px",
+              }}
             >
               <span className="sm:hidden" style={{ fontSize: "1.3rem" }}>🗑️</span>
               <span style={{ fontSize: "10px", fontWeight: 600 }} className="sm:hidden">Clear</span>
@@ -769,12 +790,13 @@ export default function DynamicMoodBoard({
               onClick={handleDownload}
               disabled={downloading}
               className="flex flex-col items-center gap-1 px-3 py-1 rounded-xl transition-opacity hover:opacity-80 disabled:opacity-50 flex-1 sm:flex-none sm:px-4 sm:py-2"
-              style={{ 
+              style={{
                 backgroundColor: window.innerWidth < 640 ? "transparent" : "var(--lavender)",
                 color: window.innerWidth < 640
                   ? isDark ? "var(--snow)" : "var(--primary)"
                   : "white",
-                minWidth: "60px" }}
+                minWidth: "60px",
+              }}
             >
               <span className="sm:hidden" style={{ fontSize: "1.3rem" }}>⬇️</span>
               <span style={{ fontSize: "10px", fontWeight: 600 }} className="sm:hidden">
@@ -786,7 +808,7 @@ export default function DynamicMoodBoard({
             </button>
           </div>
 
-          {/* Mobile add content sheet — slides up from bottom toolbar */}
+          {/* Mobile add content sheet */}
           {controlsOpen && (
             <div
               className="sm:hidden fixed bottom-16 left-0 right-0 z-40 p-4 rounded-t-2xl shadow-2xl flex flex-col gap-3"
@@ -811,7 +833,6 @@ export default function DynamicMoodBoard({
                 </button>
               </div>
 
-              {/* Add text */}
               <div className="flex gap-2">
                 <input
                   placeholder="Enter text..."
@@ -832,7 +853,6 @@ export default function DynamicMoodBoard({
                 </button>
               </div>
 
-              {/* Add image URL */}
               <div className="flex gap-2">
                 <input
                   placeholder="Image URL..."
@@ -854,7 +874,6 @@ export default function DynamicMoodBoard({
                 </button>
               </div>
 
-              {/* Upload */}
               <input
                 ref={fileInputRef}
                 type="file"

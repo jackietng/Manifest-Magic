@@ -42,9 +42,9 @@ const Signup = () => {
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen px-4">
-      <div className="flex flex-col p-8 rounded-2xl w-full max-w-md shadow-lg"
+      <div className="flex flex-col p-8 rounded-2xl w-full max-w-md"
         style={{
-          backgroundColor: isDark ? "#2a223a" : "var(--snow)",
+          backgroundColor: "transparent",
         }}
       >
         <h1
@@ -56,7 +56,7 @@ const Signup = () => {
 
         <p
           className="text-center text-sm mb-6"
-          style={{ color: mutedColor }}
+          style={{ color: textColor }}
         >
           Create your free account to save mood boards, track your mood and journal your journey.
         </p>

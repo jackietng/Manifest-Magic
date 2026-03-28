@@ -41,7 +41,7 @@ const HomePage = () => {
           Visualize your dreams and intentions with a personalized mood board.
         </p>
 
-        <div className="flex flex-col sm:flex-row gap-3 items-center justify-center">
+        <div className="flex flex-col gap-3 items-center justify-center">
           <Link to="/signup">
             <button 
               className="button px-6 py-3 text-lg hover:shadow-lg transition-shadow"

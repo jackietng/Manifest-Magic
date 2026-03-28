@@ -672,12 +672,16 @@ export default function DynamicMoodBoard({
           <div
             className="fixed sm:relative bottom-0 left-0 right-0 sm:mt-3 z-50 sm:z-auto px-3 py-3 sm:px-4 sm:py-0 flex items-center gap-2 sm:justify-center sm:flex-wrap"
             style={{
-              backgroundColor: isDark
-                ? "rgba(26, 20, 40, 0.97)"
-                : "rgba(255, 255, 255, 0.97)",
-              borderTop: `1px solid ${isDark ? "rgba(255,255,255,0.1)" : "rgba(84,70,131,0.15)"}`,
-              backdropFilter: "blur(8px)",
-              WebkitBackdropFilter: "blur(8px)",
+              backgroundColor: window.innerWidth < 640
+                ? isDark
+                  ? "rgba(26, 20, 40, 0.97)"
+                  : "rgba(255, 255, 255, 0.97)"
+                : "transparent", 
+              borderTop: window.innerWidth < 640
+                ? `1px solid ${isDark ? "rgba(255,255,255,0.1)" : "rgba(84,70,131,0.15)"}`
+                : "none",
+              backdropFilter: window.innerWidth < 640 ? "blur(8px)" : "none",
+              WebkitBackdropFilter: window.innerWidth < 640 ? "blur(8px)" : "none",
             }}
           >
             {/* Mobile — Add Content button opens sheet */}
@@ -685,8 +689,7 @@ export default function DynamicMoodBoard({
               onClick={() => setControlsOpen((prev) => !prev)}
               className="sm:hidden flex flex-col items-center gap-1 px-3 py-1 rounded-xl transition-opacity hover:opacity-80"
               style={{
-                backgroundColor: isDark ? "#2a223a" : "var(--petal)",
-                color: isDark ? "var(--snow)" : "var(--primary)",
+                color: "white",
                 minWidth: "60px",
               }}
             >
@@ -698,8 +701,14 @@ export default function DynamicMoodBoard({
             <button
               onClick={handleSave}
               disabled={saving}
-              className="flex flex-col items-center gap-1 px-3 py-1 rounded-xl transition-opacity hover:opacity-80 disabled:opacity-50 text-white flex-1 sm:flex-none sm:px-4 sm:py-2"
-              style={{ backgroundColor: "var(--plum)", minWidth: "60px" }}
+              className="flex flex-col items-center gap-1 px-3 py-1 rounded-xl transition-opacity hover:opacity-80 disabled:opacity-50 flex-1 sm:flex-none sm:px-4 sm:py-2"
+              style={{
+                backgroundColor: window.innerWidth < 640 ? "transparent" : "var(--plum)",
+                color: window.innerWidth < 640
+                  ? isDark ? "var(--snow)" : "var(--primary)"
+                  : "white",
+                minWidth: "60px",
+              }}
             >
               <span className="sm:hidden" style={{ fontSize: "1.3rem" }}>💾</span>
               <span style={{ fontSize: "10px", fontWeight: 600 }} className="sm:hidden">
@@ -713,8 +722,12 @@ export default function DynamicMoodBoard({
             {/* Clear */}
             <button
               onClick={clearBoard}
-              className="flex flex-col items-center gap-1 px-3 py-1 rounded-xl transition-opacity hover:opacity-80 text-white flex-1 sm:flex-none sm:px-4 sm:py-2"
-              style={{ backgroundColor: "var(--orchid)", minWidth: "60px" }}
+              className="flex flex-col items-center gap-1 px-3 py-1 rounded-xl transition-opacity hover:opacity-80 flex-1 sm:flex-none sm:px-4 sm:py-2"
+              style={{ 
+                backgroundColor: window.innerWidth < 640 ? "transparent" : "var(--rose)",                color: window.innerWidth < 640
+                  ? isDark ? "var(--snow)" : "var(--primary)"
+                  : "white",
+                minWidth: "60px" }}
             >
               <span className="sm:hidden" style={{ fontSize: "1.3rem" }}>🗑️</span>
               <span style={{ fontSize: "10px", fontWeight: 600 }} className="sm:hidden">Clear</span>
@@ -725,8 +738,13 @@ export default function DynamicMoodBoard({
             <button
               onClick={handleDownload}
               disabled={downloading}
-              className="flex flex-col items-center gap-1 px-3 py-1 rounded-xl transition-opacity hover:opacity-80 disabled:opacity-50 text-white flex-1 sm:flex-none sm:px-4 sm:py-2"
-              style={{ backgroundColor: "var(--rose)", minWidth: "60px" }}
+              className="flex flex-col items-center gap-1 px-3 py-1 rounded-xl transition-opacity hover:opacity-80 disabled:opacity-50 flex-1 sm:flex-none sm:px-4 sm:py-2"
+              style={{ 
+                backgroundColor: window.innerWidth < 640 ? "transparent" : "var(--lavender)",
+                color: window.innerWidth < 640
+                  ? isDark ? "var(--snow)" : "var(--primary)"
+                  : "white",
+                minWidth: "60px" }}
             >
               <span className="sm:hidden" style={{ fontSize: "1.3rem" }}>⬇️</span>
               <span style={{ fontSize: "10px", fontWeight: 600 }} className="sm:hidden">

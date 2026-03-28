@@ -55,10 +55,74 @@ const toBase64 = (url: string): Promise<string> => {
   });
 };
 
+// Draws all items onto a canvas context at full resolution
+const drawBoardToCanvas = async (
+  ctx: CanvasRenderingContext2D,
+  items: MoodBoardItem[],
+  width: number,
+  height: number,
+  isDark: boolean
+) => {
+  ctx.fillStyle = isDark ? "#2a223a" : "#ffffff";
+  ctx.fillRect(0, 0, width, height);
+
+  const sortedItems = [...items].sort((a, b) => a.zIndex - b.zIndex);
+
+  for (const item of sortedItems) {
+    if (item.type === "image") {
+      await new Promise<void>((resolve) => {
+        const img = new Image();
+        img.onload = () => {
+          ctx.drawImage(img, item.x, item.y, item.width, item.height);
+          resolve();
+        };
+        img.onerror = () => resolve();
+        img.src = item.content;
+      });
+    } else {
+      const fontSize = Math.max(12, Math.min(item.width, item.height) * 0.14);
+      ctx.font = `bold ${fontSize}px Inter, sans-serif`;
+      ctx.fillStyle = isDark ? "#f4f1f0" : "#544683";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+
+      const words = item.content.split(" ");
+      const lineHeight = fontSize * 1.3;
+      const maxWidth = item.width - 16;
+      const lines: string[] = [];
+      let currentLine = "";
+
+      for (const word of words) {
+        const testLine = currentLine ? `${currentLine} ${word}` : word;
+        const metrics = ctx.measureText(testLine);
+        if (metrics.width > maxWidth && currentLine) {
+          lines.push(currentLine);
+          currentLine = word;
+        } else {
+          currentLine = testLine;
+        }
+      }
+      if (currentLine) lines.push(currentLine);
+
+      const totalHeight = lines.length * lineHeight;
+      const startY = item.y + (item.height - totalHeight) / 2 + lineHeight / 2;
+
+      lines.forEach((line, i) => {
+        ctx.fillText(
+          line,
+          item.x + item.width / 2,
+          startY + i * lineHeight
+        );
+      });
+    }
+  }
+};
+
 export default function SavedMoodBoards() {
   const [boards, setBoards] = useState<MoodBoard[]>([]);
   const [loading, setLoading] = useState(true);
   const [preview, setPreview] = useState<PreviewBoard | null>(null);
+  const [previewReady, setPreviewReady] = useState(false);
   const [downloading, setDownloading] = useState(false);
   const previewRef = useRef<HTMLCanvasElement>(null);
   const navigate = useNavigate();
@@ -97,6 +161,7 @@ export default function SavedMoodBoards() {
   }, []);
 
   const handlePreview = async (board: MoodBoard) => {
+    setPreviewReady(false);
     const { data, error } = await supabase
       .from("moodboard_items")
       .select("type, content, x, y, width, height, zIndex")
@@ -117,9 +182,11 @@ export default function SavedMoodBoards() {
   };
 
   const getBoardDimensions = (board: MoodBoard, items: MoodBoardItem[]) => {
+    // Always prefer saved board dimensions
     if (board.board_width && board.board_height) {
       return { width: board.board_width, height: board.board_height };
     }
+    // Fallback: calculate from items with generous padding
     if (items.length === 0) return { width: 600, height: 400 };
     const maxX = Math.max(...items.map((item) => item.x + item.width));
     const maxY = Math.max(...items.map((item) => item.y + item.height));
@@ -129,9 +196,12 @@ export default function SavedMoodBoards() {
     };
   };
 
-  const getPreviewScale = (boardWidth: number) => {
-    const modalWidth = window.innerWidth * 0.9 - 32;
-    return Math.min(1, modalWidth / boardWidth);
+  const getPreviewScale = (boardWidth: number, boardHeight: number) => {
+    const modalWidth = Math.min(window.innerWidth * 0.9, 800) - 32;
+    const modalHeight = window.innerHeight * 0.6;
+    const widthScale = modalWidth / boardWidth;
+    const heightScale = modalHeight / boardHeight;
+    return Math.min(1, widthScale, heightScale);
   };
 
   // Draw preview onto canvas whenever preview changes
@@ -140,66 +210,15 @@ export default function SavedMoodBoards() {
 
     const dimensions = getBoardDimensions(preview.board, preview.items);
     const canvas = previewRef.current;
+    canvas.width = dimensions.width;
+    canvas.height = dimensions.height;
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
-    ctx.fillStyle = isDark ? "#2a223a" : "#ffffff";
-    ctx.fillRect(0, 0, dimensions.width, dimensions.height);
+    setPreviewReady(false);
 
-    const sortedItems = [...preview.items].sort((a, b) => a.zIndex - b.zIndex);
-
-    const drawItems = async () => {
-      for (const item of sortedItems) {
-        if (item.type === "image") {
-          await new Promise<void>((resolve) => {
-            const img = new Image();
-            img.onload = () => {
-              ctx.drawImage(img, item.x, item.y, item.width, item.height);
-              resolve();
-            };
-            img.onerror = () => resolve();
-            img.src = item.content;
-          });
-        } else {
-          const fontSize = Math.max(12, Math.min(item.width, item.height) * 0.14);
-          ctx.font = `bold ${fontSize}px Inter, sans-serif`;
-          ctx.fillStyle = isDark ? "#f4f1f0" : "#544683";
-          ctx.textAlign = "center";
-          ctx.textBaseline = "middle";
-
-          const words = item.content.split(" ");
-          const lineHeight = fontSize * 1.3;
-          const maxWidth = item.width - 16;
-          const lines: string[] = [];
-          let currentLine = "";
-
-          for (const word of words) {
-            const testLine = currentLine ? `${currentLine} ${word}` : word;
-            const metrics = ctx.measureText(testLine);
-            if (metrics.width > maxWidth && currentLine) {
-              lines.push(currentLine);
-              currentLine = word;
-            } else {
-              currentLine = testLine;
-            }
-          }
-          if (currentLine) lines.push(currentLine);
-
-          const totalHeight = lines.length * lineHeight;
-          const startY = item.y + (item.height - totalHeight) / 2 + lineHeight / 2;
-
-          lines.forEach((line, i) => {
-            ctx.fillText(
-              line,
-              item.x + item.width / 2,
-              startY + i * lineHeight
-            );
-          });
-        }
-      }
-    };
-
-    drawItems();
+    drawBoardToCanvas(ctx, preview.items, dimensions.width, dimensions.height, isDark)
+      .then(() => setPreviewReady(true));
   }, [preview, isDark]);
 
   const handleDownload = async () => {
@@ -212,67 +231,48 @@ export default function SavedMoodBoards() {
       canvas.width = dimensions.width;
       canvas.height = dimensions.height;
       const ctx = canvas.getContext("2d");
-
       if (!ctx) throw new Error("Could not get canvas context");
 
-      ctx.fillStyle = isDark ? "#2a223a" : "#ffffff";
-      ctx.fillRect(0, 0, dimensions.width, dimensions.height);
+      // Wait for all items to finish drawing before downloading
+      await drawBoardToCanvas(
+        ctx,
+        preview.items,
+        dimensions.width,
+        dimensions.height,
+        isDark
+      );
 
-      const sortedItems = [...preview.items].sort((a, b) => a.zIndex - b.zIndex);
+      const dataUrl = canvas.toDataURL("image/jpeg", 0.9);
+      const isMobile = window.innerWidth < 640;
 
-      for (const item of sortedItems) {
-        if (item.type === "image") {
-          await new Promise<void>((resolve) => {
-            const img = new Image();
-            img.onload = () => {
-              ctx.drawImage(img, item.x, item.y, item.width, item.height);
-              resolve();
-            };
-            img.onerror = () => resolve();
-            img.src = item.content;
-          });
-        } else {
-          const fontSize = Math.max(12, Math.min(item.width, item.height) * 0.14);
-          ctx.font = `bold ${fontSize}px Inter, sans-serif`;
-          ctx.fillStyle = isDark ? "#f4f1f0" : "#544683";
-          ctx.textAlign = "center";
-          ctx.textBaseline = "middle";
-
-          const words = item.content.split(" ");
-          const lineHeight = fontSize * 1.3;
-          const maxWidth = item.width - 16;
-          const lines: string[] = [];
-          let currentLine = "";
-
-          for (const word of words) {
-            const testLine = currentLine ? `${currentLine} ${word}` : word;
-            const metrics = ctx.measureText(testLine);
-            if (metrics.width > maxWidth && currentLine) {
-              lines.push(currentLine);
-              currentLine = word;
-            } else {
-              currentLine = testLine;
-            }
-          }
-          if (currentLine) lines.push(currentLine);
-
-          const totalHeight = lines.length * lineHeight;
-          const startY = item.y + (item.height - totalHeight) / 2 + lineHeight / 2;
-
-          lines.forEach((line, i) => {
-            ctx.fillText(
-              line,
-              item.x + item.width / 2,
-              startY + i * lineHeight
-            );
-          });
+      if (isMobile) {
+        const newTab = window.open();
+        if (newTab) {
+          newTab.document.write(`
+            <html>
+              <head>
+                <meta name="viewport" content="width=device-width, initial-scale=1">
+                <title>${preview.board.name}</title>
+                <style>
+                  body { margin: 0; background: #000; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; }
+                  img { max-width: 100%; height: auto; }
+                  p { color: white; font-family: sans-serif; font-size: 14px; margin-top: 16px; opacity: 0.7; text-align: center; padding: 0 16px; }
+                </style>
+              </head>
+              <body>
+                <img src="${dataUrl}" alt="${preview.board.name}" />
+                <p>Long press the image and tap "Add to Photos" to save it ✨</p>
+              </body>
+            </html>
+          `);
+          newTab.document.close();
         }
+      } else {
+        const link = document.createElement("a");
+        link.download = `${preview.board.name}.jpg`;
+        link.href = dataUrl;
+        link.click();
       }
-
-      const link = document.createElement("a");
-      link.download = `${preview.board.name}.jpg`;
-      link.href = canvas.toDataURL("image/jpeg", 0.9);
-      link.click();
     } catch (err) {
       console.error("Download failed:", err);
       alert("Download failed. Please try again.");
@@ -305,7 +305,7 @@ export default function SavedMoodBoards() {
     ? getBoardDimensions(preview.board, preview.items)
     : null;
   const previewScale = boardDimensions
-    ? getPreviewScale(boardDimensions.width)
+    ? getPreviewScale(boardDimensions.width, boardDimensions.height)
     : 1;
 
   return (
@@ -326,7 +326,7 @@ export default function SavedMoodBoards() {
             className="px-6 py-3 text-white rounded-xl hover:opacity-80 transition-opacity"
             style={{ backgroundColor: "var(--primary)" }}
           >
-           Create a Mood Board
+            Create a Mood Board
           </button>
         </div>
       ) : (
@@ -375,30 +375,29 @@ export default function SavedMoodBoards() {
 
       {preview && boardDimensions && (
         <div
-          className="fixed inset-0 flex items-center justify-center z-50"
+          className="fixed inset-0 flex items-center justify-center z-50 p-4"
           style={{ backgroundColor: "rgba(0,0,0,0.6)" }}
           onClick={() => setPreview(null)}
         >
           <div
-            className="rounded-2xl shadow-xl p-4 w-[90vw] max-w-4xl flex flex-col"
+            className="rounded-2xl shadow-xl p-4 w-full max-w-4xl flex flex-col"
             style={{
               ...modalStyle,
               maxHeight: "90vh",
-              height: `calc(${previewScale * boardDimensions.height}px + 120px)`,
             }}
             onClick={(e) => e.stopPropagation()}
           >
             {/* Modal header */}
             <div className="flex justify-between items-center mb-3">
               <h3
-                className="text-lg font-semibold"
+                className="text-lg font-semibold truncate flex-1"
                 style={{ color: textColor }}
               >
                 {preview.board.name}
               </h3>
               <button
                 onClick={() => setPreview(null)}
-                className="text-xl font-bold hover:opacity-60 transition-opacity"
+                className="text-xl font-bold hover:opacity-60 transition-opacity ml-3 shrink-0"
                 style={{ color: textColor }}
               >
                 ×
@@ -408,16 +407,24 @@ export default function SavedMoodBoards() {
             {/* Canvas preview area */}
             <div
               className="flex-1 rounded-xl overflow-hidden flex items-center justify-center"
-              style={{ backgroundColor: isDark ? "#2a223a" : "#f3f4f6" }}
+              style={{
+                backgroundColor: isDark ? "#2a223a" : "#f3f4f6",
+                minHeight: "200px",
+              }}
             >
+              {!previewReady && (
+                <p className="text-sm" style={{ color: mutedColor }}>
+                  Loading preview...
+                </p>
+              )}
               <canvas
                 ref={previewRef}
                 width={boardDimensions.width}
                 height={boardDimensions.height}
                 style={{
+                  display: previewReady ? "block" : "none",
                   width: boardDimensions.width * previewScale,
                   height: boardDimensions.height * previewScale,
-                  display: "block",
                 }}
               />
             </div>
@@ -426,7 +433,7 @@ export default function SavedMoodBoards() {
             <div className="flex gap-2 mt-3 justify-center">
               <button
                 onClick={handleDownload}
-                disabled={downloading}
+                disabled={downloading || !previewReady}
                 className="flex-1 py-2 text-white rounded-xl hover:opacity-80 transition-opacity disabled:opacity-50 text-sm"
                 style={{ backgroundColor: "var(--rose)" }}
               >

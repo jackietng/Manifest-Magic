@@ -40,7 +40,12 @@ const Login = () => {
   return (
     <div className="flex items-center justify-center min-h-screen overflow-hidden">
       <div className="w-full max-w-md p-8 rounded-2xl">
-        <h2 className="text-3xl font-bold mb-6 text-center">Log In</h2>
+                <h1
+          className="text-2xl font-bold text-center mb-2"
+          style={{ color: textColor }}
+        >
+          Unlock Your Magic ✨
+        </h1>
         {error && <p className="text-red-500 mb-4 text-center">{error}</p>}
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
@@ -67,7 +72,8 @@ const Login = () => {
           </div>
           <button
             type="submit"
-            className="w-full bg-[var(--lilac)] py-2 rounded-md hover:shadow-lg hover:underline"
+            className="w-full py-3 rounded-xl text-white font-medium hover:opacity-80 transition-opacity"
+            style={{ backgroundColor: "var(--primary)" }}
             disabled={loading}
           >
             {loading ? 'Logging in...' : 'Log In'}

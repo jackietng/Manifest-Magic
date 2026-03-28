@@ -55,8 +55,6 @@ const NavBar = ({ isOpen, setIsOpen }: NavBarProps) => {
     const diffX = touchStartX.current - touchEndX;
     const diffY = Math.abs(touchStartY.current - touchEndY);
 
-    // Only close if swipe is mostly horizontal (diffY < 50)
-    // and the user swiped left more than 60px
     if (diffX > 60 && diffY < 50) {
       setIsOpen(false);
     }
@@ -76,20 +74,20 @@ const NavBar = ({ isOpen, setIsOpen }: NavBarProps) => {
 
   return (
     <>
-      {/* Toggle button */}
+      {/* Toggle button — must sit above overlay (z-[70]) and sidebar (z-[60]) */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="fixed top-4 left-4 z-50 text-white p-2 rounded-full shadow-lg transition"
+        className="fixed top-4 left-4 z-[70] text-white p-2 rounded-full shadow-lg transition"
         style={{ backgroundColor: "var(--plum)" }}
         aria-label="Toggle Navigation"
       >
         {isOpen ? <HiX size={24} /> : <HiMenu size={24} />}
       </button>
 
-      {/* Overlay */}
+      {/* Overlay — z-[50] covers the mood board toolbar (z-50) and add sheet (z-40) */}
       {isOpen && (
         <div
-          className="fixed inset-0 z-30 md:hidden"
+          className="fixed inset-0 z-[50] md:hidden"
           style={{
             backgroundColor: isDark ? "rgba(0,0,0,0.5)" : "rgba(255,255,255,0.5)",
             backdropFilter: "blur(4px)",
@@ -99,9 +97,9 @@ const NavBar = ({ isOpen, setIsOpen }: NavBarProps) => {
         />
       )}
 
-      {/* Sidebar */}
+      {/* Sidebar — z-[60] sits above overlay */}
       <aside
-        className={`fixed top-0 left-0 h-full z-40 flex flex-col
+        className={`fixed top-0 left-0 h-full z-[60] flex flex-col
           shadow-2xl transform transition-transform duration-300 ease-in-out
           w-full md:w-64 overflow-y-auto 
           ${isOpen ? "translate-x-0" : "-translate-x-full"}`}
@@ -170,10 +168,7 @@ const NavBar = ({ isOpen, setIsOpen }: NavBarProps) => {
               <button
                 onClick={() => { navigate("/signup"); setIsOpen(false); }}
                 className="w-full py-2 rounded-xl text-sm font-medium transition duration-200 hover:shadow-lg"
-                style={{
-                  backgroundColor: "transparent",
-                  color: textColor,
-                }}
+                style={{ backgroundColor: "transparent", color: textColor }}
                 onMouseEnter={(e) => {
                   e.currentTarget.style.backgroundColor = "rgba(255,255,255,0.1)";
                 }}
@@ -186,10 +181,7 @@ const NavBar = ({ isOpen, setIsOpen }: NavBarProps) => {
               <button
                 onClick={() => { navigate("/login"); setIsOpen(false); }}
                 className="w-full py-2 rounded-xl text-sm font-medium transition duration-200 hover:shadow-lg"
-                style={{
-                  backgroundColor: "transparent",
-                  color: textColor,
-                }}
+                style={{ backgroundColor: "transparent", color: textColor }}
                 onMouseEnter={(e) => {
                   e.currentTarget.style.backgroundColor = "rgba(255,255,255,0.1)";
                 }}
@@ -202,7 +194,6 @@ const NavBar = ({ isOpen, setIsOpen }: NavBarProps) => {
             </>
           ) : (
             <>
-              {/* Avatar and display name — links to profile */}
               <Link
                 to="/profile"
                 onClick={() => setIsOpen(false)}
@@ -238,14 +229,10 @@ const NavBar = ({ isOpen, setIsOpen }: NavBarProps) => {
                 </div>
               </Link>
 
-              {/* Log out button */}
               <button
                 onClick={handleSignOut}
                 className="w-full py-2 rounded-xl text-sm font-medium transition duration-200 hover:shadow-lg"
-                style={{
-                  backgroundColor: "transparent",
-                  color: textColor,
-                }}
+                style={{ backgroundColor: "transparent", color: textColor }}
                 onMouseEnter={(e) => {
                   e.currentTarget.style.backgroundColor = "rgba(255,255,255,0.1)";
                 }}

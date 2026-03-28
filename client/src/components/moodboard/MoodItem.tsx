@@ -1,4 +1,4 @@
-//src/components/moodboard/MoodItem.tsx
+// src/components/moodboard/MoodItem.tsx
 import { Rnd } from "react-rnd";
 import { useState, useRef, useEffect } from "react";
 
@@ -42,6 +42,7 @@ export default function MoodItem({
   const touchDevice = isTouchDevice();
   const showControls = touchDevice ? selected : hovered;
 
+  // Sync external item changes only when not interacting
   useEffect(() => {
     if (!isDragging.current && !isResizing.current) {
       setPos({ x: item.x, y: item.y });
@@ -53,14 +54,11 @@ export default function MoodItem({
     if (!touchDevice || !selected) return;
 
     const handleTouchOutside = (e: TouchEvent) => {
-      // Don't deselect if touching a button
       const target = e.target as HTMLElement;
       if (target.closest(".no-drag")) return;
       setSelected(false);
     };
 
-    // Use a small delay so the tap that selected the item
-    // doesn't immediately trigger deselection
     const timer = setTimeout(() => {
       document.addEventListener("touchstart", handleTouchOutside);
     }, 100);
@@ -86,7 +84,6 @@ export default function MoodItem({
 
   const handleTap = (e: React.TouchEvent) => {
     if (!touchDevice) return;
-    // Don't re-trigger if tapping a button
     const target = e.target as HTMLElement;
     if (target.closest(".no-drag")) return;
     e.stopPropagation();
@@ -107,10 +104,16 @@ export default function MoodItem({
   const overlayBtnPadding = touchDevice ? "8px 12px" : "2px 5px";
   const overlayBtnFontSize = touchDevice ? "13px" : "9px";
 
+  // Rnd expects positions/sizes in SCALED (screen) pixels.
+  // Our state stores UNSCALED (board) coordinates.
+  // We convert here so Rnd renders correctly under the CSS scale() transform.
+  const scaledPos = { x: pos.x * scale, y: pos.y * scale };
+  const scaledSize = { width: size.width * scale, height: size.height * scale };
+
   return (
     <Rnd
-      position={{ x: pos.x, y: pos.y }}
-      size={{ width: size.width, height: size.height }}
+      position={scaledPos}
+      size={scaledSize}
       bounds="parent"
       lockAspectRatio={false}
       enableUserSelectHack={false}
@@ -146,44 +149,41 @@ export default function MoodItem({
         if (touchDevice) setSelected(true);
       }}
       onDrag={(_, d) => {
-        const scaledX = d.x / scale;
-        const scaledY = d.y / scale;
-        setPos({ x: scaledX, y: scaledY });
+        // d.x/d.y are already in scaled screen pixels — convert back to board coords
+        setPos({ x: d.x / scale, y: d.y / scale });
       }}
       onDragStop={(_, d) => {
         isDragging.current = false;
-        const scaledX = d.x / scale;
-        const scaledY = d.y / scale;
-        setPos({ x: scaledX, y: scaledY });
-        onChange(item.id, { x: scaledX, y: scaledY });
+        const unscaledX = d.x / scale;
+        const unscaledY = d.y / scale;
+        setPos({ x: unscaledX, y: unscaledY });
+        onChange(item.id, { x: unscaledX, y: unscaledY });
+      }}
+      onResizeStart={() => {
+        isResizing.current = true;
       }}
       onResize={(_, __, ref, _delta, position) => {
+        // ref.style.width/height are in scaled pixels — convert to board coords
         const newWidth = parseFloat(ref.style.width) / scale;
         const newHeight = parseFloat(ref.style.height) / scale;
-        const scaledX = position.x / scale;
-        const scaledY = position.y / scale;
-        setPos({ x: scaledX, y: scaledY });
+        const unscaledX = position.x / scale;
+        const unscaledY = position.y / scale;
+        setPos({ x: unscaledX, y: unscaledY });
         setSize({ width: newWidth, height: newHeight });
-        onChange(item.id, {
-          width: newWidth,
-          height: newHeight,
-          x: scaledX,
-          y: scaledY,
-        });
       }}
       onResizeStop={(_, __, ref, _delta, position) => {
         isResizing.current = false;
         const newWidth = parseFloat(ref.style.width) / scale;
         const newHeight = parseFloat(ref.style.height) / scale;
-        const scaledX = position.x / scale;
-        const scaledY = position.y / scale;
-        setPos({ x: scaledX, y: scaledY });
+        const unscaledX = position.x / scale;
+        const unscaledY = position.y / scale;
+        setPos({ x: unscaledX, y: unscaledY });
         setSize({ width: newWidth, height: newHeight });
         onChange(item.id, {
           width: newWidth,
           height: newHeight,
-          x: scaledX,
-          y: scaledY,
+          x: unscaledX,
+          y: unscaledY,
         });
       }}
     >
@@ -197,7 +197,6 @@ export default function MoodItem({
         }}
         onTouchStart={handleTap}
       >
-        {/* Image or text content */}
         {item.type === "image" ? (
           <img
             src={item.content}
@@ -233,7 +232,7 @@ export default function MoodItem({
           </div>
         )}
 
-        {/* Overlay controls — always inside the item bounds */}
+        {/* Overlay controls */}
         {showControls && (
           <div
             style={{
@@ -246,7 +245,7 @@ export default function MoodItem({
               zIndex: item.zIndex + 100,
             }}
           >
-            {/* Delete button — top right corner */}
+            {/* Delete button */}
             <button
               className="no-drag"
               onTouchEnd={(e) => {
@@ -275,14 +274,13 @@ export default function MoodItem({
                 justifyContent: "center",
                 pointerEvents: "all",
                 lineHeight: 1,
-                // Larger touch target on mobile
                 padding: touchDevice ? "8px" : "0px",
               }}
             >
               ×
             </button>
 
-            {/* Front / Back buttons — bottom left corner */}
+            {/* Front / Back buttons */}
             <div
               style={{
                 position: "absolute",

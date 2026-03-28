@@ -7,6 +7,7 @@ import type { SVGProps } from 'react';
 import { supabase } from '../../lib/supabaseClient';
 import crystalBall from '../../assets/crystal_ball.png';
 import { useTheme } from '../../context/ThemeContext';
+import { useRef } from 'react';
 
 export function MdiCrystalBall(props: SVGProps<SVGSVGElement>) {
   return (
@@ -37,6 +38,29 @@ const NavBar = ({ isOpen, setIsOpen }: NavBarProps) => {
   const { theme } = useTheme();
   const isDark = theme === "dark";
   const textColor = isDark ? "var(--snow)" : "var(--primary)";
+
+  // Touch refs for swipe-to-close
+  const touchStartX = useRef<number>(0);
+  const touchStartY = useRef<number>(0);
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    touchStartX.current = e.touches[0].clientX;
+    touchStartY.current = e.touches[0].clientY;
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    const touchEndX = e.changedTouches[0].clientX;
+    const touchEndY = e.changedTouches[0].clientY;
+
+    const diffX = touchStartX.current - touchEndX;
+    const diffY = Math.abs(touchStartY.current - touchEndY);
+
+    // Only close if swipe is mostly horizontal (diffY < 50)
+    // and the user swiped left more than 60px
+    if (diffX > 60 && diffY < 50) {
+      setIsOpen(false);
+    }
+  };
 
   const handleSignOut = async () => {
     const { error } = await supabase.auth.signOut();
@@ -85,12 +109,15 @@ const NavBar = ({ isOpen, setIsOpen }: NavBarProps) => {
           backgroundColor: "transparent",
           borderRight: "none",
         }}
+        onTouchStart={handleTouchStart}
+        onTouchEnd={handleTouchEnd}
       >
         {/* Crystal ball and title */}
         <Link
           to="/"
           className="flex flex-col items-center gap-0 mt-8 sm:mt-12 pb-4"
           style={{ borderBottom: "1px solid rgba(255,255,255,0.15)" }}
+          onClick={() => setIsOpen(false)}
         >
           <img
             src={crystalBall}
@@ -117,6 +144,7 @@ const NavBar = ({ isOpen, setIsOpen }: NavBarProps) => {
             <Link
               key={item}
               to={`/${item}`}
+              onClick={() => setIsOpen(false)}
               className="px-4 py-3 rounded-xl transition duration-200 text-sm font-medium flex items-center gap-2 no-underline"
               style={{ color: textColor, textDecoration: "none" }}
               onMouseEnter={(e) => {
@@ -207,8 +235,15 @@ const NavBar = ({ isOpen, setIsOpen }: NavBarProps) => {
                   >
                     {displayName || user.email}
                   </p>
+                  <p
+                    className="text-xs"
+                    style={{ color: isDark ? "var(--lavender)" : "var(--orchid)" }}
+                  >
+                    View Profile
+                  </p>
                 </div>
               </Link>
+
               {/* Log out button */}
               <button
                 onClick={handleSignOut}

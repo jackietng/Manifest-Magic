@@ -2,9 +2,11 @@
 import { Link } from 'react-router-dom';
 import headerLogo from '../assets/header_logo.png';
 import { useTheme } from '../context/ThemeContext';
+import { useAuth } from '../context/AuthContext';
 
 const HomePage = () => {
   const { theme } = useTheme();
+  const { user } = useAuth();
   const isDark = theme === "dark";
   const textColor = isDark ? "var(--snow)" : "var(--primary)";
 
@@ -14,7 +16,7 @@ const HomePage = () => {
       {/* Hero Content */}
       <div className="text-center max-w-3xl w-full flex flex-col items-center gap-6">
 
-        {/* Logo — smaller on mobile */}
+        {/* Logo */}
         <img
           src={headerLogo}
           alt="Manifest Magic Logo"
@@ -41,26 +43,28 @@ const HomePage = () => {
           Visualize your dreams and intentions with a personalized mood board.
         </p>
 
-        <div className="flex flex-col sm:flex-row gap-3 items-center justify-center">
-          <Link to="/signup">
-            <button 
-              className="button px-6 py-3 text-lg hover:shadow-lg transition-shadow"
-              style={{
-                backgroundColor: "var(--violet)",
-                color: textColor,
-              }}
+        <div className="flex flex-col gap-3 items-center justify-center">
+          {/* Only show Sign Up button if not logged in */}
+          {!user && (
+            <Link to="/signup">
+              <button
+                className="button px-6 py-3 text-lg hover:shadow-lg transition-shadow"
+                style={{
+                  backgroundColor: "var(--violet)",
+                  color: textColor,
+                }}
               >
                 ✨ Sign Up Free ✨
               </button>
-          </Link>
-          <Link to="/moodboard">
-            <button 
+            </Link>
+          )}
+
+          <Link to={user ? "/dashboard" : "/moodboard"}>
+            <button
               className="button px-6 py-3 rounded-full text-lg hover:shadow-lg transition-shadow"
-              style={{
-                color: textColor,
-              }}
-              >
-              Create Your Moodboard
+              style={{ color: textColor }}
+            >
+              {user ? "Go to Dashboard ✨" : "Create Your Moodboard"}
             </button>
           </Link>
         </div>

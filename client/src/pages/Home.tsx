@@ -42,22 +42,26 @@ const HomePage = () => {
         </p>
 
         <div className="flex flex-col sm:flex-row gap-3 items-center justify-center">
-          <Link to="/moodboard">
-            <button className="button text-white px-6 py-3 rounded-full text-lg hover:shadow-lg transition-shadow">
-              Create Your Moodboard
-            </button>
-          </Link>
           <Link to="/signup">
             <button 
-              className="px-6 py-3 rounded-full text-lg hover:shadow-lg transition-shadow border-2"
+              className="button px-6 py-3 text-lg hover:shadow-lg transition-shadow"
               style={{
-                backgroundColor: "transparent",
-                borderColor: "var(--lilac)",
+                backgroundColor: "var(--violet)",
                 color: textColor,
               }}
               >
-                Sign Up Free 🌙
+                ✨ Sign Up Free ✨
               </button>
+          </Link>
+          <Link to="/moodboard">
+            <button 
+              className="button px-6 py-3 rounded-full text-lg hover:shadow-lg transition-shadow"
+              style={{
+                color: textColor,
+              }}
+              >
+              Create Your Moodboard
+            </button>
           </Link>
         </div>
       </div>
@@ -71,7 +75,7 @@ const HomePage = () => {
           className="text-base sm:text-xl italic leading-relaxed"
           style={{ color: textColor }}
         >
-          "Creating a mood board has helped me stay focused and inspired on my journey."
+          "Creating a mood board has helped me stay focused and inspired on my journey." - J
         </p>
       </div>
 

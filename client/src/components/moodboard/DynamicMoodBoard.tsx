@@ -47,7 +47,7 @@ const toBase64ViaProxy = (url: string): Promise<string> => {
   });
 };
 
-const btnBase = "px-4 py-2 text-white rounded-xl transition-opacity hover:opacity-80 disabled:opacity-50";
+const btnBase = "px-3 py-2 text-white rounded-xl transition-opacity hover:opacity-80 disabled:opacity-50 text-sm";
 
 export default function DynamicMoodBoard({
   setSidebarOpen,
@@ -68,6 +68,7 @@ export default function DynamicMoodBoard({
   const [boardScale, setBoardScale] = useState(1);
   const [boardOriginalWidth, setBoardOriginalWidth] = useState<number | null>(null);
   const [boardOriginalHeight, setBoardOriginalHeight] = useState<number | null>(null);
+  const [controlsOpen, setControlsOpen] = useState(false);
   const boardRef = useRef<HTMLDivElement>(null);
   const boardWrapperRef = useRef<HTMLDivElement>(null);
   const boardContainerRef = useRef<HTMLDivElement>(null);
@@ -77,14 +78,13 @@ export default function DynamicMoodBoard({
   const boardId = searchParams.get("board");
   const { theme } = useTheme();
   const { mood } = useMood();
-  const hintColor = theme === "dark" ? "var(--snow)" : "var(--primary)";
+  const isDark = theme === "dark";
+  const hintColor = isDark ? "var(--snow)" : "var(--primary)";
   const inputStyle = {
-    backgroundColor: theme === "dark" ? "#2a223a" : "var(--snow)",
-    color: theme === "dark" ? "var(--snow)" : "var(--primary)",
+    backgroundColor: isDark ? "#2a223a" : "var(--snow)",
+    color: isDark ? "var(--snow)" : "var(--primary)",
   };
 
-  // Helper to calculate scale fitting both width and height
-  // Uses boardContainerRef (outer div) to avoid circular dependency
   const calculateAndSetScale = useCallback((
     originalWidth: number | null,
     originalHeight: number | null
@@ -106,7 +106,6 @@ export default function DynamicMoodBoard({
     setBoardScale(scale);
   }, []);
 
-  // Handle window resize
   useEffect(() => {
     const handleResize = () => {
       calculateAndSetScale(boardOriginalWidth, boardOriginalHeight);
@@ -115,7 +114,6 @@ export default function DynamicMoodBoard({
     return () => window.removeEventListener("resize", handleResize);
   }, [boardOriginalWidth, boardOriginalHeight, calculateAndSetScale]);
 
-  // Initial scale for fresh boards with no boardId
   useEffect(() => {
     if (boardId) return;
     const rafId = requestAnimationFrame(() => {
@@ -374,7 +372,7 @@ export default function DynamicMoodBoard({
 
       if (!ctx) throw new Error("Could not get canvas context");
 
-      ctx.fillStyle = theme === "dark" ? "#2a223a" : "#ffffff";
+      ctx.fillStyle = isDark ? "#2a223a" : "#ffffff";
       ctx.fillRect(0, 0, boardWidth, boardHeight);
 
       for (const item of sortedItems) {
@@ -391,7 +389,7 @@ export default function DynamicMoodBoard({
         } else {
           const fontSize = Math.max(12, Math.min(item.width, item.height) * 0.14);
           ctx.font = `bold ${fontSize}px Inter, sans-serif`;
-          ctx.fillStyle = theme === "dark" ? "#f4f1f0" : "#544683";
+          ctx.fillStyle = isDark ? "#f4f1f0" : "#544683";
           ctx.textAlign = "center";
           ctx.textBaseline = "middle";
 
@@ -503,9 +501,9 @@ export default function DynamicMoodBoard({
   };
 
   return (
-    <div className="p-4 min-h-screen">
+    <div className="p-2 sm:p-4 min-h-screen">
 
-      {/* error banner */}
+      {/* Error banner */}
       {boardError && (
         <div
           className="mb-4 p-3 rounded-xl text-center text-white"
@@ -515,105 +513,47 @@ export default function DynamicMoodBoard({
         </div>
       )}
 
-      {/* loading state */}
       {boardLoading ? (
         <div className="flex items-center justify-center h-[80vh]">
           <p style={{ color: "var(--primary)" }}>Loading board...</p>
         </div>
       ) : (
         <>
-          <div className="mb-4 flex flex-col gap-3">
+          {/* Board name — always visible */}
+          <div className="mb-3 flex flex-col gap-2">
             <input
               placeholder="Board name"
               type="text"
               value={boardName}
               onChange={(e) => setBoardName(e.target.value)}
-              className="p-2 border rounded-xl w-full focus:outline-none focus:ring-2 focus:ring-[var(--violet)]"
+              className="p-2 border rounded-xl w-full focus:outline-none focus:ring-2 focus:ring-[var(--violet)] text-sm sm:text-base"
               style={inputStyle}
             />
 
-            {/* Mood subtitle */}
             {(mood || boardMood) && (
               <p
-                className="text-center text-md italic"
-                style={{ color: theme === "dark" ? "var(--snow)" : "var(--primary)" }}
+                className="text-center text-sm sm:text-md italic"
+                style={{ color: isDark ? "var(--snow)" : "var(--primary)" }}
               >
                 Today you were feeling{" "}
-                <span
-                  className="font-semibold italic"
-                  style={{ color: theme === "dark" ? "var(--snow)" : "var(--primary)" }}
-                >
+                <span className="font-semibold italic">
                   {mood || boardMood}
                 </span>
               </p>
             )}
 
-            <div className="flex gap-2 flex-wrap">
-              <input
-                placeholder="Enter Text"
-                value={textInput}
-                onChange={(e) => setTextInput(e.target.value)}
-                className="p-2 border rounded-xl flex-1 focus:outline-none focus:ring-2 focus:ring-[var(--violet)]"
-                style={inputStyle}
-              />
-              <button
-                onClick={() => addItem("text", textInput)}
-                className={btnBase}
-                style={{ backgroundColor: "var(--primary)" }}
-              >
-                Add Text
-              </button>
-            </div>
-            <div className="flex gap-2 flex-wrap">
-              <input
-                placeholder="Enter Image URL"
-                type="text"
-                value={imageUrl}
-                onChange={(e) => setImageUrl(e.target.value)}
-                className="p-2 border rounded-xl flex-1 focus:outline-none focus:ring-2 focus:ring-[var(--violet)]"
-                style={inputStyle}
-              />
-              <button
-                onClick={() => addItem("image", imageUrl)}
-                className={btnBase}
-                style={{ backgroundColor: "var(--primary)" }}
-              >
-                Add Image
-              </button>
-            </div>
-            <div className="flex gap-2 flex-wrap items-center justify-center">
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/*"
-                onChange={handleFileUpload}
-                className="hidden"
-              />
-              <button
-                onClick={() => fileInputRef.current?.click()}
-                disabled={uploading}
-                className={btnBase}
-                style={{ backgroundColor: "var(--lilac)" }}
-              >
-                {uploading ? "Uploading..." : "Upload Image from Device"}
-              </button>
-              <span className="text-sm" style={{ color: hintColor }}>
-                Uploaded images work best for downloading
-              </span>
-            </div>
             {saved && (
               <p
-                className="text-center"
-                style={{ color: theme === "dark" ? "var(--lavender)" : "var(--primary)" }}
+                className="text-center text-sm"
+                style={{ color: isDark ? "var(--lavender)" : "var(--primary)" }}
               >
-                Board saved successfully!
+                Board saved! ✨
               </p>
             )}
           </div>
 
-          {/* Outer container — measured for scale calculation */}
+          {/* Board */}
           <div ref={boardContainerRef} className="w-full flex justify-center">
-            {/* Inner wrapper — sized to match scaled board exactly */}
             <div
               ref={boardWrapperRef}
               className="rounded-xl shadow"
@@ -628,12 +568,11 @@ export default function DynamicMoodBoard({
                 borderRadius: "0.75rem",
               }}
             >
-              {/* Actual board — full size, scaled via transform */}
               <div
                 ref={boardRef}
                 className="relative"
                 style={{
-                  backgroundColor: theme === "dark" ? "#2a223a" : "var(--snow)",
+                  backgroundColor: isDark ? "#2a223a" : "var(--snow)",
                   width: boardScale < 1
                     ? `${boardOriginalWidth || BOARD_MIN_WIDTH}px`
                     : "100%",
@@ -648,10 +587,10 @@ export default function DynamicMoodBoard({
               >
                 {items.length === 0 && (
                   <p
-                    className="absolute inset-0 flex items-center justify-center"
+                    className="absolute inset-0 flex items-center justify-center text-center px-4"
                     style={{ color: "var(--orchid)" }}
                   >
-                    Add images or text to get started!
+                    Add images or text below to get started!
                   </p>
                 )}
                 {items.map((item) => (
@@ -669,7 +608,154 @@ export default function DynamicMoodBoard({
             </div>
           </div>
 
-          <div className="flex gap-2 flex-wrap mt-4 justify-center">
+          {/* ── Add content controls — below board on all screen sizes ── */}
+          <div className="mt-3">
+
+            {/* Mobile — collapsible */}
+            <div className="sm:hidden">
+              <button
+                onClick={() => setControlsOpen((prev) => !prev)}
+                className="w-full py-2 rounded-xl text-sm font-medium flex items-center justify-center gap-2 transition-opacity hover:opacity-80"
+                style={{
+                  backgroundColor: isDark ? "#2a223a" : "var(--petal)",
+                  color: isDark ? "var(--snow)" : "var(--primary)",
+                }}
+              >
+                {controlsOpen ? "▲ Hide Controls" : "▼ Add Content"}
+              </button>
+
+              {controlsOpen && (
+                <div
+                  className="mt-2 p-3 rounded-xl flex flex-col gap-2"
+                  style={{
+                    backgroundColor: isDark ? "#1a1428" : "#f9f6ff",
+                  }}
+                >
+                  <div className="flex gap-2">
+                    <input
+                      placeholder="Enter text..."
+                      value={textInput}
+                      onChange={(e) => setTextInput(e.target.value)}
+                      className="p-2 border rounded-xl flex-1 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--violet)]"
+                      style={inputStyle}
+                    />
+                    <button
+                      onClick={() => {
+                        addItem("text", textInput);
+                        setControlsOpen(false);
+                      }}
+                      className={btnBase}
+                      style={{ backgroundColor: "var(--primary)" }}
+                    >
+                      Add
+                    </button>
+                  </div>
+
+                  <div className="flex gap-2">
+                    <input
+                      placeholder="Image URL..."
+                      type="text"
+                      value={imageUrl}
+                      onChange={(e) => setImageUrl(e.target.value)}
+                      className="p-2 border rounded-xl flex-1 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--violet)]"
+                      style={inputStyle}
+                    />
+                    <button
+                      onClick={() => {
+                        addItem("image", imageUrl);
+                        setControlsOpen(false);
+                      }}
+                      className={btnBase}
+                      style={{ backgroundColor: "var(--primary)" }}
+                    >
+                      Add
+                    </button>
+                  </div>
+
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => {
+                      handleFileUpload(e);
+                      setControlsOpen(false);
+                    }}
+                    className="hidden"
+                  />
+                  <button
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={uploading}
+                    className="w-full py-2 rounded-xl text-white text-sm font-medium hover:opacity-80 transition-opacity disabled:opacity-50"
+                    style={{ backgroundColor: "var(--lilac)" }}
+                  >
+                    {uploading ? "Uploading..." : "📷 Upload from Device"}
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* Desktop — always visible */}
+            <div className="hidden sm:flex flex-col gap-3">
+              <div className="flex gap-2 flex-wrap">
+                <input
+                  placeholder="Enter Text"
+                  value={textInput}
+                  onChange={(e) => setTextInput(e.target.value)}
+                  className="p-2 border rounded-xl flex-1 focus:outline-none focus:ring-2 focus:ring-[var(--violet)]"
+                  style={inputStyle}
+                />
+                <button
+                  onClick={() => addItem("text", textInput)}
+                  className={btnBase}
+                  style={{ backgroundColor: "var(--primary)" }}
+                >
+                  Add Text
+                </button>
+              </div>
+
+              <div className="flex gap-2 flex-wrap">
+                <input
+                  placeholder="Enter Image URL"
+                  type="text"
+                  value={imageUrl}
+                  onChange={(e) => setImageUrl(e.target.value)}
+                  className="p-2 border rounded-xl flex-1 focus:outline-none focus:ring-2 focus:ring-[var(--violet)]"
+                  style={inputStyle}
+                />
+                <button
+                  onClick={() => addItem("image", imageUrl)}
+                  className={btnBase}
+                  style={{ backgroundColor: "var(--primary)" }}
+                >
+                  Add Image
+                </button>
+              </div>
+
+              <div className="flex gap-2 flex-wrap items-center justify-center">
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={handleFileUpload}
+                  className="hidden"
+                />
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={uploading}
+                  className={btnBase}
+                  style={{ backgroundColor: "var(--lilac)" }}
+                >
+                  {uploading ? "Uploading..." : "Upload Image from Device"}
+                </button>
+                <span className="text-sm" style={{ color: hintColor }}>
+                  Uploaded images work best for downloading
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Action buttons */}
+          <div className="flex gap-2 flex-wrap mt-3 justify-center">
             <button
               onClick={handleSave}
               disabled={saving}

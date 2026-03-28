@@ -235,12 +235,6 @@ const NavBar = ({ isOpen, setIsOpen }: NavBarProps) => {
                   >
                     {displayName || user.email}
                   </p>
-                  <p
-                    className="text-xs"
-                    style={{ color: isDark ? "var(--lavender)" : "var(--orchid)" }}
-                  >
-                    View Profile
-                  </p>
                 </div>
               </Link>
 

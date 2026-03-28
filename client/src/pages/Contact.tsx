@@ -7,6 +7,7 @@ const Contact = () => {
   const [sending, setSending] = useState(false);
   const [success, setSuccess] = useState("");
   const [error, setError] = useState("");
+  const [slowConnection, setSlowConnection] = useState(false);
   const { theme } = useTheme();
   const isDark = theme === "dark";
   const textColor = isDark ? "var(--snow)" : "var(--primary)";
@@ -29,6 +30,8 @@ const Contact = () => {
     setSending(true);
     setSuccess("");
     setError("");
+    setSlowConnection(false); 
+    const slowTimer = setTimeout(() => setSlowConnection(true), 5000);
 
     try {
       const res = await fetch(`${import.meta.env.VITE_PROXY_URL}/contact`, {
@@ -49,6 +52,8 @@ const Contact = () => {
       setError("Something went wrong. Please try again.");
     }
 
+    clearTimeout(slowTimer);
+    setSlowConnection(false);
     setSending(false);
   };
 
@@ -141,6 +146,15 @@ const Contact = () => {
         >
           {sending ? "Sending..." : "Send Message"}
         </button>
+
+        {sending && slowConnection && (
+          <p
+            className="text-center text-sm mt-2"
+            style={{ color: textColor }}
+          >
+            Still sending... Please wait.
+          </p>
+        )}
 
         {success && (
           <p

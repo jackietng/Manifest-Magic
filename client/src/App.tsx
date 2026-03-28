@@ -48,7 +48,7 @@ function App() {
               element={
                 <>
                   <MoodInput />
-                  <DynamicMoodBoard setSidebarOpen={setSidebarOpen} />
+                  <DynamicMoodBoard setSidebarOpen={setSidebarOpen} sidebarOpen={sidebarOpen} />
                 </>
               }
             />

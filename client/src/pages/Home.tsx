@@ -41,11 +41,25 @@ const HomePage = () => {
           Visualize your dreams and intentions with a personalized mood board.
         </p>
 
-        <Link to="/moodboard">
-          <button className="button text-white px-6 py-3 rounded-full text-lg hover:shadow-lg transition-shadow">
-            Create Your Moodboard
-          </button>
-        </Link>
+        <div className="flex flex-col sm:flex-row gap-3 items-center justify-center">
+          <Link to="/moodboard">
+            <button className="button text-white px-6 py-3 rounded-full text-lg hover:shadow-lg transition-shadow">
+              Create Your Moodboard
+            </button>
+          </Link>
+          <Link to="/signup">
+            <button 
+              className="px-6 py-3 rounded-full text-lg hover:shadow-lg transition-shadow border-2"
+              style={{
+                backgroundColor: "transparent",
+                borderColor: "var(--lilac)",
+                color: textColor,
+              }}
+              >
+                Sign Up Free 🌙
+              </button>
+          </Link>
+        </div>
       </div>
 
       {/* Testimonial */}

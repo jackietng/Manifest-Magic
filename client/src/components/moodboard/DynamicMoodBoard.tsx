@@ -51,8 +51,10 @@ const btnBase = "px-3 py-2 text-white rounded-xl transition-opacity hover:opacit
 
 export default function DynamicMoodBoard({
   setSidebarOpen,
+  sidebarOpen = false,
 }: {
   setSidebarOpen?: (open: boolean) => void;
+  sidebarOpen?: boolean;
 }) {
   const [items, setItems] = useState<MoodItemType[]>([]);
   const [imageUrl, setImageUrl] = useState("");
@@ -698,7 +700,7 @@ export default function DynamicMoodBoard({
 
           {/* ── BOTTOM TOOLBAR — fixed on mobile, static on desktop ── */}
           <div
-            className="fixed sm:relative bottom-0 left-0 right-0 sm:mt-3 z-50 sm:z-auto px-3 py-3 sm:px-4 sm:py-0 flex items-center gap-2 sm:justify-center sm:flex-wrap"
+            className={`fixed sm:relative bottom-0 left-0 right-0 sm:mt-3 sm:z-auto px-3 py-3 sm:px-4 sm:py-0 flex items-center gap-2 sm:justify-center sm:flex-wrap transition-all duration-300 ${sidebarOpen ? "z-30" : "z-50"}`}
             style={{
               backgroundColor: window.innerWidth < 640
                 ? isDark

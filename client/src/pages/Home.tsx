@@ -79,7 +79,7 @@ const HomePage = () => {
           className="text-base sm:text-xl italic leading-relaxed"
           style={{ color: textColor }}
         >
-          "Creating a mood board has helped me stay focused and inspired on my journey." - J
+          "Creating a mood board has helped me stay focused and inspired on my journey."
         </p>
       </div>
 

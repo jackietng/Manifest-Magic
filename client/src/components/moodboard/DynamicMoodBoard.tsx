@@ -190,12 +190,14 @@ export default function DynamicMoodBoard({
           // Calculate scale FIRST, get the value synchronously
           const computedScale = calculateAndSetScale(savedWidth, savedHeight);
 
+          // If the container isn't mounted yet, skip — the second rAF will catch it
+          if (!boardContainerRef.current) return;
+
           const loadedItems: MoodItemType[] = (boardItems || []).map(
             (item, index) => ({
               id: uuid(),
               type: item.type,
               content: item.content,
-              // Items are saved in unscaled board coordinates — load them as-is
               x: item.x,
               y: item.y,
               width: item.width,
@@ -204,12 +206,10 @@ export default function DynamicMoodBoard({
             })
           );
 
-          // Set items AFTER scale is known so MoodItem renders with correct scaled props
-          setItems((prev) => (prev.length > 0 ? prev : loadedItems));
+          // Always set items — container is confirmed ready at this point
+          setItems(loadedItems);
           setBoardLoading(false);
 
-          // Keep scale ref in sync (calculateAndSetScale already does this,
-          // but be explicit since we depend on it for new item placement)
           boardScaleRef.current = computedScale;
         });
       });

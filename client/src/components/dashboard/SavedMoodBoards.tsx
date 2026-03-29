@@ -195,12 +195,18 @@ export default function SavedMoodBoards() {
 
   const getPreviewScale = (boardWidth: number, boardHeight: number) => {
     const isMobile = window.innerWidth < 640;
-    const modalWidth = isMobile
-      ? window.innerWidth - 32
-      : Math.min(window.innerWidth * 0.9, 800) - 32;
-    const modalHeight = window.innerHeight * (isMobile ? 0.5 : 0.6);
-    const widthScale = modalWidth / boardWidth;
-    const heightScale = modalHeight / boardHeight;
+    // Modal: max-h-[90vh], p-4 outer (16px*2=32px vertical padding on modal)
+    // Header row: 28px text + 12px mb-3 = ~40px
+    // Footer row: 36px buttons + 12px mt-3 = ~48px
+    // Total chrome: 32 + 40 + 48 = 120px
+    const CHROME = 120;
+    const SIDE_PAD = 32;
+    const availableWidth = isMobile
+      ? window.innerWidth - SIDE_PAD
+      : Math.min(window.innerWidth * 0.9, 800) - SIDE_PAD;
+    const availableHeight = window.innerHeight * 0.9 - CHROME;
+    const widthScale = availableWidth / boardWidth;
+    const heightScale = availableHeight / boardHeight;
     return Math.min(1, widthScale, heightScale);
   };
 
@@ -350,11 +356,19 @@ export default function SavedMoodBoards() {
           onClick={() => setPreview(null)}
         >
           <div
-            className="rounded-2xl shadow-xl p-4 w-full max-w-4xl flex flex-col"
-            style={{ ...modalStyle, maxHeight: "90vh" }}
+            className="rounded-2xl shadow-xl p-4 w-full max-w-4xl"
+            style={{
+              ...modalStyle,
+              // Give the modal a fixed height so children can use percentage heights
+              height: "90vh",
+              display: "grid",
+              gridTemplateRows: "auto 1fr auto",
+              gap: "12px",
+            }}
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex justify-between items-center mb-3">
+            {/* Header */}
+            <div className="flex justify-between items-center">
               <h3 className="text-lg font-semibold truncate flex-1" style={{ color: textColor }}>
                 {preview.board.name}
               </h3>
@@ -365,22 +379,26 @@ export default function SavedMoodBoards() {
               >×</button>
             </div>
 
+            {/*
+              Canvas area — grid row "1fr" means it takes ALL remaining height
+              between header and footer. overflow-hidden clips nothing because
+              the canvas CSS size is already calculated to fit exactly.
+            */}
             <div
-              className="flex-1 rounded-xl overflow-hidden flex items-center justify-center"
+              className="rounded-xl flex items-center justify-center overflow-hidden"
               style={{
                 backgroundColor: isDark ? "#2a223a" : "#f3f4f6",
-                minHeight: "200px",
-                // Constrain the canvas display area — never let it overflow
-                maxHeight: window.innerHeight * 0.55,
+                // min-height so it never collapses on tiny phones
+                minHeight: "120px",
               }}
             >
               {!previewReady && (
                 <p className="text-sm" style={{ color: mutedColor }}>Loading preview...</p>
               )}
               {/*
-                canvas.width/height = full board resolution (unscaled drawing coordinates)
-                style width/height   = CSS display size, scaled to fit the modal
-                maxWidth/maxHeight   = safety net so canvas never overflows its container
+                canvas.width/height  = full board resolution (drawing coordinates, never touch)
+                style width/height   = CSS display size scaled to fit available space
+                maxWidth/maxHeight   = belt-and-suspenders so it never overflows
               */}
               <canvas
                 ref={previewRef}
@@ -394,7 +412,8 @@ export default function SavedMoodBoards() {
               />
             </div>
 
-            <div className="flex gap-2 mt-3 justify-center">
+            {/* Footer */}
+            <div className="flex gap-2 justify-center">
               <button onClick={handleDownload} disabled={downloading || !previewReady} className="flex-1 py-2 text-white rounded-xl hover:opacity-80 transition-opacity disabled:opacity-50 text-sm" style={{ backgroundColor: "var(--rose)" }}>
                 {downloading ? "Downloading..." : "Download"}
               </button>

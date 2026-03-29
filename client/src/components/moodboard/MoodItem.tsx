@@ -17,6 +17,56 @@ const isTouchDevice = () =>
   typeof window !== "undefined" &&
   ("ontouchstart" in window || navigator.maxTouchPoints > 0);
 
+// Visible bar/dot rendered inside each resize handle
+function BarHandle({
+  direction,
+  visible,
+  touchDevice,
+}: {
+  direction: "top" | "bottom" | "left" | "right" | "corner";
+  visible: boolean;
+  touchDevice: boolean;
+}) {
+  const isHorizontal = direction === "top" || direction === "bottom";
+  const isCorner = direction === "corner";
+
+  const base: React.CSSProperties = {
+    borderRadius: "999px",
+    backgroundColor: visible ? "rgba(139, 92, 246, 0.85)" : "transparent",
+    transition: "background-color 0.15s ease, opacity 0.15s ease",
+    opacity: visible ? 1 : 0,
+    pointerEvents: "none",
+    flexShrink: 0,
+  };
+
+  if (isCorner) {
+    const s = touchDevice ? 14 : 10;
+    return <div style={{ ...base, width: s, height: s, borderRadius: "50%" }} />;
+  }
+
+  if (isHorizontal) {
+    return (
+      <div
+        style={{
+          ...base,
+          width: touchDevice ? 36 : 24,
+          height: touchDevice ? 5 : 4,
+        }}
+      />
+    );
+  }
+
+  return (
+    <div
+      style={{
+        ...base,
+        width: touchDevice ? 5 : 4,
+        height: touchDevice ? 36 : 24,
+      }}
+    />
+  );
+}
+
 export default function MoodItem({
   item,
   onChange,
@@ -42,7 +92,9 @@ export default function MoodItem({
   const touchDevice = isTouchDevice();
   const showControls = touchDevice ? selected : hovered;
 
-  // Sync external item changes only when not interacting
+  // Generous touch hit area for each handle
+  const hitArea = touchDevice ? 28 : 14;
+
   useEffect(() => {
     if (!isDragging.current && !isResizing.current) {
       setPos({ x: item.x, y: item.y });
@@ -52,17 +104,14 @@ export default function MoodItem({
 
   useEffect(() => {
     if (!touchDevice || !selected) return;
-
     const handleTouchOutside = (e: TouchEvent) => {
       const target = e.target as HTMLElement;
       if (target.closest(".no-drag")) return;
       setSelected(false);
     };
-
     const timer = setTimeout(() => {
       document.addEventListener("touchstart", handleTouchOutside);
     }, 100);
-
     return () => {
       clearTimeout(timer);
       document.removeEventListener("touchstart", handleTouchOutside);
@@ -90,25 +139,51 @@ export default function MoodItem({
     setSelected(true);
   };
 
-  const handleStyle = {
-    width: touchDevice ? "20px" : "12px",
-    height: touchDevice ? "20px" : "12px",
-    backgroundColor: showControls ? "rgba(156, 163, 175, 0.9)" : "transparent",
-    borderRadius: "3px",
-    zIndex: 10,
-    transition: "background-color 0.15s ease",
-  };
+  // Each handle wrapper: transparent hit area, flexbox to position the visible bar
+  const edgeH = (align: "flex-start" | "center" | "flex-end", justify: "flex-start" | "center" | "flex-end"): React.CSSProperties => ({
+    width: "100%",
+    height: hitArea,
+    background: "transparent",
+    zIndex: 20,
+    display: "flex",
+    alignItems: align,
+    justifyContent: justify,
+    padding: "2px 0",
+  });
+
+  const edgeV = (align: "flex-start" | "center" | "flex-end", justify: "flex-start" | "center" | "flex-end"): React.CSSProperties => ({
+    width: hitArea,
+    height: "100%",
+    background: "transparent",
+    zIndex: 20,
+    display: "flex",
+    alignItems: align,
+    justifyContent: justify,
+    padding: "0 2px",
+  });
+
+  const cornerStyle = (align: "flex-start" | "flex-end", justify: "flex-start" | "flex-end"): React.CSSProperties => ({
+    width: hitArea,
+    height: hitArea,
+    background: "transparent",
+    zIndex: 20,
+    display: "flex",
+    alignItems: align,
+    justifyContent: justify,
+    padding: "2px",
+  });
 
   const btnSize = touchDevice ? "32px" : "20px";
   const btnFontSize = touchDevice ? "18px" : "12px";
   const overlayBtnPadding = touchDevice ? "8px 12px" : "2px 5px";
   const overlayBtnFontSize = touchDevice ? "13px" : "9px";
 
-  // Rnd expects positions/sizes in SCALED (screen) pixels.
-  // Our state stores UNSCALED (board) coordinates.
-  // We convert here so Rnd renders correctly under the CSS scale() transform.
   const scaledPos = { x: pos.x * scale, y: pos.y * scale };
   const scaledSize = { width: size.width * scale, height: size.height * scale };
+
+  const bar = (dir: "top" | "bottom" | "left" | "right" | "corner") => (
+    <BarHandle direction={dir} visible={showControls} touchDevice={touchDevice} />
+  );
 
   return (
     <Rnd
@@ -118,27 +193,40 @@ export default function MoodItem({
       lockAspectRatio={false}
       enableUserSelectHack={false}
       enableResizing={{
+        top: true,
+        bottom: true,
+        left: true,
+        right: true,
         topLeft: true,
-        topRight: false,
+        topRight: true,
         bottomLeft: true,
         bottomRight: true,
-        top: false,
-        bottom: false,
-        left: false,
-        right: false,
       }}
       resizeHandleStyles={{
-        topLeft: { ...handleStyle, top: "0px", left: "0px" },
-        bottomLeft: { ...handleStyle, bottom: "0px", left: "0px" },
-        bottomRight: { ...handleStyle, bottom: "0px", right: "0px" },
+        top:         edgeH("flex-start", "center"),
+        bottom:      edgeH("flex-end",   "center"),
+        left:        edgeV("center",     "flex-start"),
+        right:       edgeV("center",     "flex-end"),
+        topLeft:     cornerStyle("flex-start", "flex-start"),
+        topRight:    cornerStyle("flex-start", "flex-end"),
+        bottomLeft:  cornerStyle("flex-end",   "flex-start"),
+        bottomRight: cornerStyle("flex-end",   "flex-end"),
+      }}
+      resizeHandleComponent={{
+        top:         <>{bar("top")}</>,
+        bottom:      <>{bar("bottom")}</>,
+        left:        <>{bar("left")}</>,
+        right:       <>{bar("right")}</>,
+        topLeft:     <>{bar("corner")}</>,
+        topRight:    <>{bar("corner")}</>,
+        bottomLeft:  <>{bar("corner")}</>,
+        bottomRight: <>{bar("corner")}</>,
       }}
       style={{
         position: "absolute",
         overflow: "visible",
         zIndex: item.zIndex,
-        outline: showControls
-          ? "2px dashed rgba(156, 163, 175, 0.8)"
-          : "none",
+        outline: showControls ? "2px dashed rgba(139, 92, 246, 0.6)" : "none",
         transition: "outline 0.15s ease",
         touchAction: "none",
       }}
@@ -149,7 +237,6 @@ export default function MoodItem({
         if (touchDevice) setSelected(true);
       }}
       onDrag={(_, d) => {
-        // d.x/d.y are already in scaled screen pixels — convert back to board coords
         setPos({ x: d.x / scale, y: d.y / scale });
       }}
       onDragStop={(_, d) => {
@@ -161,9 +248,9 @@ export default function MoodItem({
       }}
       onResizeStart={() => {
         isResizing.current = true;
+        if (touchDevice) setSelected(true);
       }}
       onResize={(_, __, ref, _delta, position) => {
-        // ref.style.width/height are in scaled pixels — convert to board coords
         const newWidth = parseFloat(ref.style.width) / scale;
         const newHeight = parseFloat(ref.style.height) / scale;
         const unscaledX = position.x / scale;
@@ -245,7 +332,7 @@ export default function MoodItem({
               zIndex: item.zIndex + 100,
             }}
           >
-            {/* Delete button */}
+            {/* Delete — top right */}
             <button
               className="no-drag"
               onTouchEnd={(e) => {
@@ -280,7 +367,7 @@ export default function MoodItem({
               ×
             </button>
 
-            {/* Front / Back buttons */}
+            {/* Front / Back — bottom left */}
             <div
               style={{
                 position: "absolute",

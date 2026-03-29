@@ -183,36 +183,40 @@ export default function DynamicMoodBoard({
         return;
       }
 
-      // Double rAF: wait for DOM to paint and container to have real dimensions
-      // before calculating scale — then set items so they render at correct positions
-      requestAnimationFrame(() => {
-        requestAnimationFrame(() => {
-          // Calculate scale FIRST, get the value synchronously
+      // Build items once — we'll set them when the container is ready
+      const loadedItems: MoodItemType[] = (boardItems || []).map(
+        (item, index) => ({
+          id: uuid(),
+          type: item.type,
+          content: item.content,
+          x: item.x,
+          y: item.y,
+          width: item.width,
+          height: item.height,
+          zIndex: item.zIndex || index + 1,
+        })
+      );
+
+      // Retry until boardContainerRef is mounted (mobile can take many frames).
+      // Always calls setBoardLoading(false) so we never get stuck on loading screen.
+      const tryMount = (attemptsLeft: number) => {
+        if (boardContainerRef.current) {
+          // Container ready — calculate scale and render items
           const computedScale = calculateAndSetScale(savedWidth, savedHeight);
-
-          // If the container isn't mounted yet, skip — the second rAF will catch it
-          if (!boardContainerRef.current) return;
-
-          const loadedItems: MoodItemType[] = (boardItems || []).map(
-            (item, index) => ({
-              id: uuid(),
-              type: item.type,
-              content: item.content,
-              x: item.x,
-              y: item.y,
-              width: item.width,
-              height: item.height,
-              zIndex: item.zIndex || index + 1,
-            })
-          );
-
-          // Always set items — container is confirmed ready at this point
+          boardScaleRef.current = computedScale;
           setItems(loadedItems);
           setBoardLoading(false);
+        } else if (attemptsLeft > 0) {
+          // Not ready yet — wait one more frame
+          requestAnimationFrame(() => tryMount(attemptsLeft - 1));
+        } else {
+          // Gave up waiting — render with default scale rather than hang forever
+          setItems(loadedItems);
+          setBoardLoading(false);
+        }
+      };
 
-          boardScaleRef.current = computedScale;
-        });
-      });
+      requestAnimationFrame(() => tryMount(30));
     };
 
     loadBoard();

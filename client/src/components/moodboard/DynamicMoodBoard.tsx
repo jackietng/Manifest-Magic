@@ -215,7 +215,7 @@ export default function DynamicMoodBoard({
           const computedScale = calculateAndSetScale(savedWidth, savedHeight);
           boardScaleRef.current = computedScale;
           setBoardScale(computedScale);
-          setInitialScale(null);
+          setInitialScale(computedScale);
           setItems(loadedItems);
           setBoardLoading(false);
         } else if (attemptsLeft > 0) {
@@ -647,7 +647,7 @@ export default function DynamicMoodBoard({
                 height: `${(boardOriginalHeight || BOARD_MIN_HEIGHT) * boardScale}px`,
                 overflow: "hidden",
                 borderRadius: "0.75rem",
-                opacity: boardLoading ? 0 : 1,
+                opacity: boardId && initialScale === null ? 0 : 1,
               }}
             >
               <div

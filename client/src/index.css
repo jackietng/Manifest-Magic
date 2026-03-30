@@ -208,3 +208,115 @@ body.dark .mood-logger h2 {
 .footer a:hover {
   text-decoration: underline;
 }
+
+.magic-loader {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  overflow: hidden;
+  background: transparent;
+  text-align: center;
+}
+
+.magic-loader.hide {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.sparkle-container {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+}
+
+.sparkle {
+  position: absolute;
+  width: calc(6px * var(--scale));
+  height: calc(6px * var(--scale));
+  top: calc(100% * var(--y));
+  left: calc(100% * var(--x));
+  border-radius: 50%;
+  background: radial-gradient(circle, #fff6c2 0%, #d4af37 60%, transparent 100%);
+  box-shadow:
+    0 0 6px rgba(212, 175, 55, 0.9),
+    0 0 12px rgba(212, 175, 55, 0.6),
+    0 0 18px rgba(255, 223, 120, 0.5);
+  opacity: 0.2;
+  animation:
+    float var(--duration) linear infinite,
+    twinkle var(--twinkle) ease-in-out infinite;
+  animation-delay: var(--delay);
+  top: calc(100% * var(--y));
+  left: calc(100% * var(--x));
+}
+
+.sparkle:nth-child(3n) {
+  clip-path: polygon(
+    50% 0%, 
+    60% 40%, 
+    100% 50%, 
+    60% 60%, 
+    50% 100%, 
+    40% 60%, 
+    0% 50%, 
+    40% 40%
+  );
+}
+
+.sparkle:nth-child(5n) {
+  animation-duration: 1.2s, 0.6s;
+}
+
+@keyframes sparkle {
+  0% {
+    transform: translateY(20px) scale(0.6);
+    opacity: 0;
+  }
+  25% {
+    opacity: 1;
+    transform: translateY(0px) scale(1);
+  }
+  50% {
+    transform: translateY(-10px) scale(1.2);
+    opacity: 0.9;
+  }
+  100% {
+    transform: translateY(-40px) scale(0.6);
+    opacity: 0;
+  }
+}
+
+@keyframes float {
+  0% {
+    transform: translateY(30px) translateX(0px);
+  }
+  100% {
+    transform: translateY(-60px) translateX(var(--drift));
+  }
+}
+
+@keyframes twinkle {
+  0%, 100% {
+    opacity: 0;
+    transform: scale(0.6);
+    filter: brightness(0.8);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.4);
+    filter: brightness(1.6);
+  }
+}
+
+.loading-text {
+  color: white;
+  font-size: 1.3rem;
+  letter-spacing: 1.5px;
+  z-index: 2;
+  text-shadow: 0 0 8px rgba(255, 223, 120, 0.6);
+  margin-top: 20px;
+}

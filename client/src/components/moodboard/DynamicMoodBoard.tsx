@@ -6,6 +6,7 @@ import { supabase } from "../../lib/supabaseClient";
 import MoodItem from "../../components/moodboard/MoodItem";
 import { useTheme } from "../../context/ThemeContext";
 import { useMood } from "../../context/MoodContext";
+import MagicLoader from "../../components/moodboard/BoardLoader";
 
 export type MoodItemType = {
   id: string;
@@ -167,7 +168,7 @@ export default function DynamicMoodBoard({
 
       if (boardError || !board) {
         setBoardError("Failed to load board. Please try again.");
-        setBoardLoading(false);
+        setTimeout(() => setBoardLoading(false), 800);
         return;
       }
 
@@ -598,9 +599,7 @@ export default function DynamicMoodBoard({
       )}
 
       {boardLoading ? (
-        <div className="flex items-center justify-center h-[80vh]">
-          <p style={{ color: "var(--primary)" }}>Loading board...</p>
-        </div>
+        <MagicLoader />
       ) : (
         <>
           <div className="px-2 sm:px-4 pt-2 sm:pt-4 mb-2 sm:mb-3 flex flex-col gap-2">

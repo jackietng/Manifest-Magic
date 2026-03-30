@@ -67,13 +67,9 @@ export default function DynamicMoodBoard({
   const [saved, setSaved] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [downloading, setDownloading] = useState(false);
-  // Start in loading state if we're opening a saved board
-  const [boardLoading, setBoardLoading] = useState(() => {
-    const params = new URLSearchParams(window.location.search);
-    return !!params.get("board");
-  });
+  const [boardLoading, setBoardLoading] = useState(false);
   const [boardError, setBoardError] = useState("");
-  const [boardScale, setBoardScale] = useState(0);
+  const [boardScale, setBoardScale] = useState(1);
   // Tracks the scale computed at load time so items render correctly on first paint
   const [initialScale, setInitialScale] = useState<number | null>(null);
   const [boardOriginalWidth, setBoardOriginalWidth] = useState<number | null>(null);
@@ -590,8 +586,6 @@ export default function DynamicMoodBoard({
     setSaving(false);
   };
 
-  if (boardLoading) return <BoardLoader />;
-
   return (
     <div className="pb-20 sm:pb-4 min-h-screen">
       {boardError && (
@@ -603,7 +597,12 @@ export default function DynamicMoodBoard({
         </div>
       )}
 
-      <>
+      {boardLoading ? (
+        <div className="flex items-center justify-center h-[80vh]">
+          <p style={{ color: "var(--primary)" }}>Loading board...</p>
+        </div>
+      ) : (
+        <>
           <div className="px-2 sm:px-4 pt-2 sm:pt-4 mb-2 sm:mb-3 flex flex-col gap-2">
             <input
               placeholder="Board name"
@@ -648,9 +647,6 @@ export default function DynamicMoodBoard({
                 height: `${(boardOriginalHeight || BOARD_MIN_HEIGHT) * boardScale}px`,
                 overflow: "hidden",
                 borderRadius: "0.75rem",
-                // Hide board until tryMount has confirmed the correct scale.
-                // boardScale starts at 1 but saved boards need a scale < 1,
-                // so we stay hidden until initialScale is set by tryMount.
                 opacity: boardId && initialScale === null ? 0 : 1,
               }}
             >
@@ -892,7 +888,8 @@ export default function DynamicMoodBoard({
               </button>
             </div>
           )}
-      </>
+        </>
+      )}
     </div>
   );
 }

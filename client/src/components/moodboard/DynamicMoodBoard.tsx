@@ -417,7 +417,7 @@ export default function DynamicMoodBoard({
             flexDirection: "column",
             alignItems: "center",
             justifyContent: "center",
-            backgroundColor: isDark ? "#1a1428" : "#f4f1f0",
+            backgroundColor: "transparent",
             zIndex: 9999,
           }}
         >
@@ -444,8 +444,8 @@ export default function DynamicMoodBoard({
                 width: sp.size,
                 height: sp.size,
                 borderRadius: "50%",
-                background: "radial-gradient(circle, #fff6c2 0%, #d4af37 60%, transparent 100%)",
-                boxShadow: "0 0 6px rgba(212,175,55,0.9), 0 0 12px rgba(212,175,55,0.5)",
+                background: "radial-gradient(circle, #ffe066 0%, #b8860b 60%, transparent 100%)",
+                boxShadow: "0 0 8px rgba(184,134,11,0.95), 0 0 18px rgba(184,134,11,0.6)",
                 animation: `mm-twinkle ${sp.dur} ${sp.delay} ease-in-out infinite alternate`,
                 opacity: 0,
               }}
@@ -460,7 +460,7 @@ export default function DynamicMoodBoard({
             letterSpacing: "0.12em",
             animation: "mm-fade 1.5s ease-in-out infinite alternate",
           }}>
-            Manifesting your vision
+            Manifesting your vision...
           </p>
           <p style={{
             color: isDark ? "#c4b5d4" : "#a485b4",
@@ -469,7 +469,6 @@ export default function DynamicMoodBoard({
             marginTop: 8,
             animation: "mm-fade 1.5s 0.75s ease-in-out infinite alternate",
           }}>
-            ✦ &nbsp; ✦ &nbsp; ✦
           </p>
 
           <style>{`

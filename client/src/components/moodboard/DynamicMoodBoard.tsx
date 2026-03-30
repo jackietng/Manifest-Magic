@@ -4,7 +4,6 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { v4 as uuid } from "uuid";
 import { supabase } from "../../lib/supabaseClient";
 import MoodItem from "../../components/moodboard/MoodItem";
-import BoardLoader from "../../components/moodboard/BoardLoader";
 import { useTheme } from "../../context/ThemeContext";
 import { useMood } from "../../context/MoodContext";
 
@@ -70,7 +69,7 @@ export default function DynamicMoodBoard({
   const [downloading, setDownloading] = useState(false);
   const [boardLoading, setBoardLoading] = useState(false);
   const [boardError, setBoardError] = useState("");
-  const [boardScale, setBoardScale] = useState(0);
+  const [boardScale, setBoardScale] = useState(1);
   // Tracks the scale computed at load time so items render correctly on first paint
   const [initialScale, setInitialScale] = useState<number | null>(null);
   const [boardOriginalWidth, setBoardOriginalWidth] = useState<number | null>(null);
@@ -214,6 +213,12 @@ export default function DynamicMoodBoard({
           // Container ready — compute correct scale then render items
           const computedScale = calculateAndSetScale(savedWidth, savedHeight);
           boardScaleRef.current = computedScale;
+          console.log("📋 LOAD — savedWidth:", savedWidth, "savedHeight:", savedHeight);
+          console.log("📋 LOAD — containerWidth:", boardContainerRef.current.offsetWidth);
+          console.log("📋 LOAD — computedScale:", computedScale);
+          console.log("📋 LOAD — items[0]:", JSON.stringify(loadedItems[0]));
+          // Set initialScale and items together so MoodItem gets the right
+          // scale on its very first render — boardScale state may lag one cycle
           setInitialScale(computedScale);
           setItems(loadedItems);
           setBoardLoading(false);
@@ -540,6 +545,10 @@ export default function DynamicMoodBoard({
     const savedWidth = boardOriginalWidth || BOARD_MIN_WIDTH;
     const savedHeight = boardOriginalHeight || BOARD_MIN_HEIGHT;
 
+    console.log("💾 SAVE — savedWidth:", savedWidth, "savedHeight:", savedHeight);
+    console.log("💾 SAVE — boardScaleRef:", boardScaleRef.current);
+    console.log("💾 SAVE — items[0]:", JSON.stringify(items[0]));
+
     const { data: board, error: boardError } = await supabase
       .from("moodboards")
       .insert([
@@ -599,7 +608,9 @@ export default function DynamicMoodBoard({
       )}
 
       {boardLoading ? (
-        <BoardLoader />
+        <div className="flex items-center justify-center h-[80vh]">
+          <p style={{ color: "var(--primary)" }}>Loading board...</p>
+        </div>
       ) : (
         <>
           <div className="px-2 sm:px-4 pt-2 sm:pt-4 mb-2 sm:mb-3 flex flex-col gap-2">
@@ -642,11 +653,12 @@ export default function DynamicMoodBoard({
               ref={boardWrapperRef}
               className="rounded-xl shadow"
               style={{
+                // boardOriginalWidth/Height are always set (fixed for new boards,
+                // loaded from DB for saved boards) so we always use them directly
                 width: `${(boardOriginalWidth || BOARD_MIN_WIDTH) * boardScale}px`,
                 height: `${(boardOriginalHeight || BOARD_MIN_HEIGHT) * boardScale}px`,
                 overflow: "hidden",
                 borderRadius: "0.75rem",
-                opacity: boardScale === 0 ? 0 : 1,
               }}
             >
               <div

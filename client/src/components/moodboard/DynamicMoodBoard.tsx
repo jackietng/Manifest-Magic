@@ -370,10 +370,8 @@ export default function DynamicMoodBoard({
   };
 
   const handleSave = async () => {
-    console.log("handleSave fired");
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
-      console.log("no user, writing to localStorage");
       localStorage.setItem(
         "manifest_magic_pending_board",
         JSON.stringify({ items, boardName, boardMood })

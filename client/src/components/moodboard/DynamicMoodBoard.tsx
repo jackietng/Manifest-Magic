@@ -445,7 +445,8 @@ export default function DynamicMoodBoard({
                 height: `${sp.size}px`,
                 backgroundColor: "#d4af37",
                 clipPath: "polygon(50% 0%, 61% 39%, 100% 50%, 61% 61%, 50% 100%, 39% 61%, 0% 50%, 39% 39%)",
-                boxShadow: `0 0 ${sp.size}px rgba(212,175,55,0.9), 0 0 ${sp.size * 2}px rgba(212,175,55,0.5)`,
+                boxShadow: `0 0 ${sp.size * 0.5}px rgba(255,223,100,1), 0 0 ${sp.size}px rgba(212,175,55,0.9), 0 0 ${sp.size * 2}px rgba(212,175,55,0.7), 0 0 ${sp.size * 3}px rgba(184,134,11,0.4)`,
+                filter: `drop-shadow(0 0 ${sp.size * 0.4}px rgba(255,215,0,0.95)) drop-shadow(0 0 ${sp.size * 0.8}px rgba(212,175,55,0.7))`,
                 animation: `mm-twinkle ${sp.dur} ${sp.delay} ease-in-out infinite alternate`,
                 opacity: 0,
               }}

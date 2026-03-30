@@ -398,8 +398,82 @@ export default function DynamicMoodBoard({
       )}
 
       {boardLoading ? (
-        <div className="flex items-center justify-center h-[80vh]">
-          <p style={{ color: "var(--primary)" }}>Loading board...</p>
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            justifyContent: "center",
+            backgroundColor: "transparent",
+            zIndex: 9999,
+          }}
+        >
+          {/* Sparkles */}
+          {Array.from({ length: 20 }).map((_, i) => (
+            <span
+              key={i}
+              style={{
+                position: "absolute",
+                width: `${4 + Math.random() * 8}px`,
+                height: `${4 + Math.random() * 8}px`,
+                borderRadius: "50%",
+                backgroundColor: ["#b485d3","#a485b4","#e4b5fb","#544683","#ae89cf"][i % 5],
+                top: `${10 + Math.random() * 80}%`,
+                left: `${5 + Math.random() * 90}%`,
+                animation: `mm-twinkle ${1.2 + Math.random()}s ${Math.random() * 2}s ease-in-out infinite alternate`,
+                opacity: 0,
+              }}
+            />
+          ))}
+          {/* Orb */}
+          <div
+            style={{
+              width: 72,
+              height: 72,
+              borderRadius: "50%",
+              background: isDark
+                ? "radial-gradient(circle at 35% 35%, #7c5cbf, #3d2a6b)"
+                : "radial-gradient(circle at 35% 35%, #c4b5d4, #544683)",
+              boxShadow: "0 0 30px rgba(124,92,191,0.6)",
+              animation: "mm-pulse 2s ease-in-out infinite",
+              marginBottom: 24,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            <div
+              style={{
+                width: 18,
+                height: 18,
+                borderRadius: "50%",
+                background: "rgba(255,255,255,0.4)",
+                filter: "blur(4px)",
+                transform: "translate(-6px,-6px)",
+              }}
+            />
+          </div>
+          <p style={{
+            color: isDark ? "#f4f1f0" : "#544683",
+            fontSize: "15px",
+            fontWeight: 600,
+            letterSpacing: "0.05em",
+          }}>
+            Manifesting your vision ✨
+          </p>
+          {/* Keyframes */}
+          <style>{`
+            @keyframes mm-twinkle {
+              0% { opacity: 0; transform: scale(0.5); }
+              100% { opacity: 1; transform: scale(1.3); }
+            }
+            @keyframes mm-pulse {
+              0%, 100% { transform: scale(1); }
+              50% { transform: scale(1.08); filter: brightness(1.2); }
+            }
+          `}</style>
         </div>
       ) : (
         <>

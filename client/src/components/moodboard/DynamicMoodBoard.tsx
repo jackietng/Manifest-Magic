@@ -213,6 +213,10 @@ export default function DynamicMoodBoard({
           // Container ready — compute correct scale then render items
           const computedScale = calculateAndSetScale(savedWidth, savedHeight);
           boardScaleRef.current = computedScale;
+          console.log("📋 LOAD — savedWidth:", savedWidth, "savedHeight:", savedHeight);
+          console.log("📋 LOAD — containerWidth:", boardContainerRef.current.offsetWidth);
+          console.log("📋 LOAD — computedScale:", computedScale);
+          console.log("📋 LOAD — items[0]:", JSON.stringify(loadedItems[0]));
           // Set initialScale and items together so MoodItem gets the right
           // scale on its very first render — boardScale state may lag one cycle
           setInitialScale(computedScale);
@@ -540,6 +544,10 @@ export default function DynamicMoodBoard({
     // boardOriginalWidth/Height are always set — use them directly
     const savedWidth = boardOriginalWidth || BOARD_MIN_WIDTH;
     const savedHeight = boardOriginalHeight || BOARD_MIN_HEIGHT;
+
+    console.log("💾 SAVE — savedWidth:", savedWidth, "savedHeight:", savedHeight);
+    console.log("💾 SAVE — boardScaleRef:", boardScaleRef.current);
+    console.log("💾 SAVE — items[0]:", JSON.stringify(items[0]));
 
     const { data: board, error: boardError } = await supabase
       .from("moodboards")

@@ -69,9 +69,9 @@ export default function DynamicMoodBoard({
   const [uploading, setUploading] = useState(false);
   const [downloading, setDownloading] = useState(false);
   const [boardLoading, setBoardLoading] = useState(false);
+  const [boardReady, setBoardReady] = useState(false);
   const [boardError, setBoardError] = useState("");
   const [boardScale, setBoardScale] = useState(1);
-  // Tracks the scale computed at load time so items render correctly on first paint
   const [initialScale, setInitialScale] = useState<number | null>(null);
   const [boardOriginalWidth, setBoardOriginalWidth] = useState<number | null>(null);
   const [boardOriginalHeight, setBoardOriginalHeight] = useState<number | null>(null);
@@ -133,10 +133,9 @@ export default function DynamicMoodBoard({
 
   useEffect(() => {
     if (boardId) return;
-    // Give new boards a fixed logical size so save/load is consistent
-    // across devices regardless of viewport size
     setBoardOriginalWidth(BOARD_MIN_WIDTH);
     setBoardOriginalHeight(BOARD_MIN_HEIGHT);
+    setBoardReady(true);
     const rafId = requestAnimationFrame(() => {
       calculateAndSetScale(BOARD_MIN_WIDTH, BOARD_MIN_HEIGHT);
     });
@@ -207,8 +206,6 @@ export default function DynamicMoodBoard({
         })
       );
 
-      // Keep retrying until boardContainerRef is mounted (mobile needs more frames).
-      // Always resolves — never leaves the board stuck on "Loading...".
       const tryMount = (attemptsLeft: number) => {
         if (boardContainerRef.current) {
           // Container ready — compute correct scale then render items
@@ -217,6 +214,7 @@ export default function DynamicMoodBoard({
           setBoardScale(computedScale);
           setInitialScale(computedScale);
           setItems(loadedItems);
+          setBoardReady(true);
           setBoardLoading(false);
         } else if (attemptsLeft > 0) {
           requestAnimationFrame(() => tryMount(attemptsLeft - 1));
@@ -647,7 +645,7 @@ export default function DynamicMoodBoard({
                 height: `${(boardOriginalHeight || BOARD_MIN_HEIGHT) * boardScale}px`,
                 overflow: "hidden",
                 borderRadius: "0.75rem",
-                opacity: boardId && initialScale === null ? 0 : 1,
+                opacity: boardReady ? 1 : 0,
               }}
             >
               <div

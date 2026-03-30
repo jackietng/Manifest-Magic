@@ -612,14 +612,14 @@ export default function DynamicMoodBoard({
               style={inputStyle}
             />
 
-            {(mood || boardMood) && (
+            {(boardId ? boardMood : mood) && (
               <p
                 className="text-center text-sm sm:text-md italic"
                 style={{ color: isDark ? "var(--snow)" : "var(--primary)" }}
               >
                 Today you were feeling{" "}
                 <span className="font-semibold italic">
-                  {mood || boardMood}
+                  {boardId ? boardMood : mood}
                 </span>
               </p>
             )}

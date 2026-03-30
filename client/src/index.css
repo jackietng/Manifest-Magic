@@ -218,7 +218,6 @@ body.dark .mood-logger h2 {
   justify-content: center;
   z-index: 9999;
   overflow: hidden;
-  background: transparent;
   text-align: center;
 }
 
@@ -313,7 +312,6 @@ body.dark .mood-logger h2 {
 }
 
 .loading-text {
-  color: white;
   font-size: 1.3rem;
   letter-spacing: 1.5px;
   z-index: 2;

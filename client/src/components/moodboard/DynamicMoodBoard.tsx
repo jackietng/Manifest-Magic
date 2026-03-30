@@ -4,7 +4,6 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { v4 as uuid } from "uuid";
 import { supabase } from "../../lib/supabaseClient";
 import MoodItem from "../../components/moodboard/MoodItem";
-import BoardLoader from "../../components/moodboard/BoardLoader";
 import { useTheme } from "../../context/ThemeContext";
 import { useMood } from "../../context/MoodContext";
 

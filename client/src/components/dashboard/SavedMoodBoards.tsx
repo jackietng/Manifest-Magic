@@ -113,7 +113,7 @@ const drawBoardToCanvas = async (
   }
 };
 
-export default function SavedMoodBoards() {
+export default function SavedMoodBoards({ refreshKey = 0 }: { refreshKey?: number }) {
   const [boards, setBoards] = useState<MoodBoard[]>([]);
   const [loading, setLoading] = useState(true);
   const [preview, setPreview] = useState<PreviewBoard | null>(null);
@@ -154,7 +154,7 @@ export default function SavedMoodBoards() {
     };
 
     fetchBoards();
-  }, []);
+  }, [refreshKey]);
 
   const handlePreview = async (board: MoodBoard) => {
     setPreview(null);

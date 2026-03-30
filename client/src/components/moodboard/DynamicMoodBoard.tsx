@@ -371,7 +371,14 @@ export default function DynamicMoodBoard({
 
   const handleSave = async () => {
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user) { navigate("/login"); return; }
+    if (!user) {
+      localStorage.setItem(
+        "manifest_magic_pending_board",
+        JSON.stringify({ items, boardName, boardMood })
+      );
+      navigate("/login");
+      return;
+    }
     if (items.length === 0) { alert("Add some items to your board before saving!"); return; }
     setSaving(true);
     const savedWidth = boardOriginalWidth || BOARD_MIN_WIDTH;

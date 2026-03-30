@@ -427,36 +427,8 @@ export default function DynamicMoodBoard({
               }}
             />
           ))}
-          {/* Orb */}
-          <div
-            style={{
-              width: 72,
-              height: 72,
-              borderRadius: "50%",
-              background: isDark
-                ? "radial-gradient(circle at 35% 35%, #7c5cbf, #3d2a6b)"
-                : "radial-gradient(circle at 35% 35%, #c4b5d4, #544683)",
-              boxShadow: "0 0 30px rgba(124,92,191,0.6)",
-              animation: "mm-pulse 2s ease-in-out infinite",
-              marginBottom: 24,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-            }}
-          >
-            <div
-              style={{
-                width: 18,
-                height: 18,
-                borderRadius: "50%",
-                background: "rgba(255,255,255,0.4)",
-                filter: "blur(4px)",
-                transform: "translate(-6px,-6px)",
-              }}
-            />
-          </div>
           <p style={{
-            color: isDark ? "#f4f1f0" : "#544683",
+            color: isDark ? "var(--snow)" : "var(--primary)",
             fontSize: "15px",
             fontWeight: 600,
             letterSpacing: "0.05em",

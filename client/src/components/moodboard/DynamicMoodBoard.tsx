@@ -145,6 +145,8 @@ export default function DynamicMoodBoard({
   useEffect(() => {
     if (!boardId) return;
 
+    let observer: ResizeObserver | null = null;
+
     const loadBoard = async () => {
       setBoardLoading(true);
       setBoardReady(false);
@@ -195,27 +197,43 @@ export default function DynamicMoodBoard({
         zIndex: item.zIndex || index + 1,
       }));
 
-      const tryMount = (attemptsLeft: number) => {
-        if (boardContainerRef.current) {
-          const computedScale = calculateAndSetScale(savedWidth, savedHeight);
-          boardScaleRef.current = computedScale;
-          setInitialScale(computedScale);
-          setItems(loadedItems);
-          setBoardReady(true);
-          setBoardLoading(false);
-        } else if (attemptsLeft > 0) {
-          requestAnimationFrame(() => tryMount(attemptsLeft - 1));
-        } else {
-          setItems(loadedItems);
-          setBoardReady(true);
-          setBoardLoading(false);
+      const mountWithStableScale = () => {
+        if (!boardContainerRef.current) return;
+        const containerWidth = boardContainerRef.current.offsetWidth;
+        if (containerWidth === 0) return;
+
+        const computedScale = calculateAndSetScale(savedWidth, savedHeight);
+        boardScaleRef.current = computedScale;
+        // Do NOT set initialScale — let boardScale drive everything consistently
+        setItems(loadedItems);
+        setBoardReady(true);
+        setBoardLoading(false);
+
+        if (observer) {
+          observer.disconnect();
+          observer = null;
         }
       };
 
-      requestAnimationFrame(() => tryMount(30));
+      // Try immediately first
+      if (boardContainerRef.current && boardContainerRef.current.offsetWidth > 0) {
+        mountWithStableScale();
+      } else {
+        // Wait for container to have real dimensions
+        observer = new ResizeObserver(() => {
+          mountWithStableScale();
+        });
+        if (boardContainerRef.current) {
+          observer.observe(boardContainerRef.current);
+        }
+      }
     };
 
     loadBoard();
+
+    return () => {
+      if (observer) observer.disconnect();
+    };
   }, [boardId, calculateAndSetScale]);
 
   const addItem = useCallback(
@@ -491,7 +509,6 @@ export default function DynamicMoodBoard({
               50%  { opacity: 0.4; transform: scale(0.7); filter: brightness(0.9); }
               75%  { opacity: 1;   transform: scale(1.2); filter: brightness(2.0); }
               100% { opacity: 0.2; transform: scale(0.5); filter: brightness(0.8); }
-            }
             }
             @keyframes mm-fade {
               0%   { opacity: 0.4; }

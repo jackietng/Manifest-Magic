@@ -20,6 +20,7 @@ export type MoodItemType = {
 
 const PROXY_URL = import.meta.env.VITE_PROXY_URL || "http://localhost:5000";
 const BOARD_MIN_WIDTH = 600;
+const BOARD_MIN_HEIGHT = 800; // Fixed logical height for new boards
 
 const toBase64ViaProxy = (url: string): Promise<string> => {
   return new Promise((resolve) => {
@@ -131,8 +132,12 @@ export default function DynamicMoodBoard({
 
   useEffect(() => {
     if (boardId) return;
+    // Give new boards a fixed logical size so save/load is consistent
+    // across devices regardless of viewport size
+    setBoardOriginalWidth(BOARD_MIN_WIDTH);
+    setBoardOriginalHeight(BOARD_MIN_HEIGHT);
     const rafId = requestAnimationFrame(() => {
-      calculateAndSetScale(null, null);
+      calculateAndSetScale(BOARD_MIN_WIDTH, BOARD_MIN_HEIGHT);
     });
     return () => cancelAnimationFrame(rafId);
   }, [boardId, calculateAndSetScale]);
@@ -396,9 +401,8 @@ export default function DynamicMoodBoard({
         await new Promise((res) => setTimeout(res, 350));
       }
 
-      const referenceWidth = boardOriginalWidth || boardRef.current?.offsetWidth || BOARD_MIN_WIDTH;
-      const boardHeight = boardOriginalHeight || boardRef.current?.offsetHeight || 0;
-      const boardWidth = referenceWidth;
+      const boardWidth = boardOriginalWidth || BOARD_MIN_WIDTH;
+      const boardHeight = boardOriginalHeight || BOARD_MIN_HEIGHT;
 
       const itemsWithBase64 = await Promise.all(
         items.map(async (item) => {
@@ -533,8 +537,9 @@ export default function DynamicMoodBoard({
 
     setSaving(true);
 
-    const savedWidth = boardOriginalWidth || boardRef.current?.offsetWidth || BOARD_MIN_WIDTH;
-    const savedHeight = boardOriginalHeight || boardRef.current?.offsetHeight || 0;
+    // boardOriginalWidth/Height are always set — use them directly
+    const savedWidth = boardOriginalWidth || BOARD_MIN_WIDTH;
+    const savedHeight = boardOriginalHeight || BOARD_MIN_HEIGHT;
 
     const { data: board, error: boardError } = await supabase
       .from("moodboards")
@@ -640,13 +645,10 @@ export default function DynamicMoodBoard({
               ref={boardWrapperRef}
               className="rounded-xl shadow"
               style={{
-                width:
-                  boardScale < 1
-                    ? `${(boardOriginalWidth || BOARD_MIN_WIDTH) * boardScale}px`
-                    : "100%",
-                height: boardOriginalHeight
-                  ? `${boardOriginalHeight * boardScale}px`
-                  : `calc(${window.innerWidth < 640 ? "92vh" : "80vh"} * ${boardScale})`,
+                // boardOriginalWidth/Height are always set (fixed for new boards,
+                // loaded from DB for saved boards) so we always use them directly
+                width: `${(boardOriginalWidth || BOARD_MIN_WIDTH) * boardScale}px`,
+                height: `${(boardOriginalHeight || BOARD_MIN_HEIGHT) * boardScale}px`,
                 overflow: "hidden",
                 borderRadius: "0.75rem",
               }}
@@ -656,15 +658,8 @@ export default function DynamicMoodBoard({
                 className="relative"
                 style={{
                   backgroundColor: isDark ? "#2a223a" : "var(--snow)",
-                  width:
-                    boardScale < 1
-                      ? `${boardOriginalWidth || BOARD_MIN_WIDTH}px`
-                      : "100%",
-                  height: boardOriginalHeight
-                    ? `${boardOriginalHeight}px`
-                    : window.innerWidth < 640
-                    ? "92vh"
-                    : "80vh",
+                  width: `${boardOriginalWidth || BOARD_MIN_WIDTH}px`,
+                  height: `${boardOriginalHeight || BOARD_MIN_HEIGHT}px`,
                   transformOrigin: "top left",
                   transform: `scale(${boardScale})`,
                   overflow: "hidden",

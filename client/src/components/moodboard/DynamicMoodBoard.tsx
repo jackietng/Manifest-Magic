@@ -93,7 +93,6 @@ export default function DynamicMoodBoard({
     boardScaleRef.current = boardScale;
   }, [boardScale]);
 
-  // Returns the computed scale value directly so callers can use it immediately
   const calculateAndSetScale = useCallback(
     (originalWidth: number | null, originalHeight: number | null): number => {
       if (!boardContainerRef.current) return 1;
@@ -183,36 +182,41 @@ export default function DynamicMoodBoard({
         return;
       }
 
-      // Double rAF: wait for DOM to paint and container to have real dimensions
-      // before calculating scale — then set items so they render at correct positions
-      requestAnimationFrame(() => {
-        requestAnimationFrame(() => {
-          // Calculate scale FIRST, get the value synchronously
+      // Build items array once from DB data
+      const loadedItems: MoodItemType[] = (boardItems || []).map(
+        (item, index) => ({
+          id: uuid(),
+          type: item.type,
+          content: item.content,
+          // Coordinates are stored in unscaled board space — load as-is
+          x: item.x,
+          y: item.y,
+          width: item.width,
+          height: item.height,
+          zIndex: item.zIndex || index + 1,
+        })
+      );
+
+      // Keep retrying until boardContainerRef is mounted (mobile needs more frames).
+      // Always resolves — never leaves the board stuck on "Loading...".
+      const tryMount = (attemptsLeft: number) => {
+        if (boardContainerRef.current) {
+          // Container ready — compute correct scale then render items
           const computedScale = calculateAndSetScale(savedWidth, savedHeight);
-
-          const loadedItems: MoodItemType[] = (boardItems || []).map(
-            (item, index) => ({
-              id: uuid(),
-              type: item.type,
-              content: item.content,
-              // Items are saved in unscaled board coordinates — load them as-is
-              x: item.x,
-              y: item.y,
-              width: item.width,
-              height: item.height,
-              zIndex: item.zIndex || index + 1,
-            })
-          );
-
-          // Set items AFTER scale is known so MoodItem renders with correct scaled props
-          setItems((prev) => (prev.length > 0 ? prev : loadedItems));
-          setBoardLoading(false);
-
-          // Keep scale ref in sync (calculateAndSetScale already does this,
-          // but be explicit since we depend on it for new item placement)
           boardScaleRef.current = computedScale;
-        });
-      });
+          setItems(loadedItems);
+          setBoardLoading(false);
+        } else if (attemptsLeft > 0) {
+          requestAnimationFrame(() => tryMount(attemptsLeft - 1));
+        } else {
+          // Container never appeared — render anyway with default scale
+          setItems(loadedItems);
+          setBoardLoading(false);
+        }
+      };
+
+      // Start trying after one frame so React has painted the loading state
+      requestAnimationFrame(() => tryMount(30));
     };
 
     loadBoard();
@@ -241,11 +245,14 @@ export default function DynamicMoodBoard({
             // decode not supported, continue anyway
           }
 
-          const maxDimension = 300;
           const naturalWidth = img.naturalWidth || img.width;
           const naturalHeight = img.naturalHeight || img.height;
           const ratio = naturalWidth / naturalHeight;
 
+          // FIX: use 500px max dimension so images appear at a usable size.
+          // Items are stored in unscaled board coordinates, so this is the
+          // true pixel size on the board — not the shrunken screen size.
+          const maxDimension = 500;
           let width = naturalWidth;
           let height = naturalHeight;
 
@@ -263,8 +270,8 @@ export default function DynamicMoodBoard({
             id: uuid(),
             type: "image",
             content: proxyUrl,
-            x: Math.round(100 / currentScale),
-            y: Math.round(100 / currentScale),
+            x: Math.round(50 / currentScale),
+            y: Math.round(50 / currentScale),
             width,
             height,
             zIndex: items.length + 1,
@@ -382,7 +389,6 @@ export default function DynamicMoodBoard({
         await new Promise((res) => setTimeout(res, 350));
       }
 
-      // offsetHeight/offsetWidth report unscaled layout size — read directly
       const referenceWidth = boardOriginalWidth || boardRef.current?.offsetWidth || BOARD_MIN_WIDTH;
       const boardHeight = boardOriginalHeight || boardRef.current?.offsetHeight || 0;
       const boardWidth = referenceWidth;
@@ -439,9 +445,7 @@ export default function DynamicMoodBoard({
           let currentLine = "";
 
           for (const word of words) {
-            const testLine = currentLine
-              ? `${currentLine} ${word}`
-              : word;
+            const testLine = currentLine ? `${currentLine} ${word}` : word;
             const metrics = ctx.measureText(testLine);
             if (metrics.width > maxWidth && currentLine) {
               lines.push(currentLine);
@@ -522,9 +526,6 @@ export default function DynamicMoodBoard({
 
     setSaving(true);
 
-    // Save ORIGINAL unscaled board dimensions.
-    // offsetHeight/offsetWidth report the element's layout size BEFORE CSS scale(),
-    // so we read them directly — do NOT divide by boardScale.
     const savedWidth = boardOriginalWidth || boardRef.current?.offsetWidth || BOARD_MIN_WIDTH;
     const savedHeight = boardOriginalHeight || boardRef.current?.offsetHeight || 0;
 
@@ -549,7 +550,6 @@ export default function DynamicMoodBoard({
       return;
     }
 
-    // Items are already in unscaled board coordinates — save them directly
     const formattedItems = items.map((item) => ({
       board_id: board.id,
       type: item.type,
@@ -578,7 +578,6 @@ export default function DynamicMoodBoard({
 
   return (
     <div className="pb-20 sm:pb-4 min-h-screen">
-      {/* Error banner */}
       {boardError && (
         <div
           className="mb-4 p-3 rounded-xl text-center text-white mx-2"
@@ -594,7 +593,6 @@ export default function DynamicMoodBoard({
         </div>
       ) : (
         <>
-          {/* Board name */}
           <div className="px-2 sm:px-4 pt-2 sm:pt-4 mb-2 sm:mb-3 flex flex-col gap-2">
             <input
               placeholder="Board name"
@@ -620,16 +618,13 @@ export default function DynamicMoodBoard({
             {saved && (
               <p
                 className="text-center text-sm"
-                style={{
-                  color: isDark ? "var(--lavender)" : "var(--primary)",
-                }}
+                style={{ color: isDark ? "var(--lavender)" : "var(--primary)" }}
               >
                 Board saved! ✨
               </p>
             )}
           </div>
 
-          {/* Board */}
           <div
             ref={boardContainerRef}
             className="w-full flex justify-center px-2 sm:px-4"
@@ -644,9 +639,7 @@ export default function DynamicMoodBoard({
                     : "100%",
                 height: boardOriginalHeight
                   ? `${boardOriginalHeight * boardScale}px`
-                  : `calc(${
-                      window.innerWidth < 640 ? "92vh" : "80vh"
-                    } * ${boardScale})`,
+                  : `calc(${window.innerWidth < 640 ? "92vh" : "80vh"} * ${boardScale})`,
                 overflow: "hidden",
                 borderRadius: "0.75rem",
               }}
@@ -694,7 +687,6 @@ export default function DynamicMoodBoard({
             </div>
           </div>
 
-          {/* Desktop controls */}
           <div className="hidden sm:flex flex-col gap-3 px-4 mt-3">
             <div className="flex gap-2 flex-wrap">
               <input
@@ -753,7 +745,6 @@ export default function DynamicMoodBoard({
             </div>
           </div>
 
-          {/* Bottom toolbar */}
           <div
             className={`fixed sm:relative bottom-0 left-0 right-0 sm:mt-3 sm:z-auto px-3 py-3 sm:px-4 sm:py-0 flex items-center gap-2 sm:justify-center sm:flex-wrap transition-all duration-300 ${
               sidebarOpen ? "z-30" : "z-50"
@@ -761,122 +752,68 @@ export default function DynamicMoodBoard({
             style={{
               backgroundColor:
                 window.innerWidth < 640
-                  ? isDark
-                    ? "rgba(26, 20, 40, 0.97)"
-                    : "rgba(255, 255, 255, 0.97)"
+                  ? isDark ? "rgba(26, 20, 40, 0.97)" : "rgba(255, 255, 255, 0.97)"
                   : "transparent",
               borderTop:
                 window.innerWidth < 640
-                  ? `1px solid ${
-                      isDark
-                        ? "rgba(255,255,255,0.1)"
-                        : "rgba(84,70,131,0.15)"
-                    }`
+                  ? `1px solid ${isDark ? "rgba(255,255,255,0.1)" : "rgba(84,70,131,0.15)"}`
                   : "none",
-              backdropFilter:
-                window.innerWidth < 640 ? "blur(8px)" : "none",
-              WebkitBackdropFilter:
-                window.innerWidth < 640 ? "blur(8px)" : "none",
+              backdropFilter: window.innerWidth < 640 ? "blur(8px)" : "none",
+              WebkitBackdropFilter: window.innerWidth < 640 ? "blur(8px)" : "none",
             }}
           >
-            {/* Mobile Add button */}
             <button
               onClick={() => setControlsOpen((prev) => !prev)}
               className="sm:hidden flex flex-col items-center gap-1 px-3 py-1 rounded-xl transition-opacity hover:opacity-80"
-              style={{
-                color: isDark ? "var(--snow)" : "var(--primary)",
-                minWidth: "60px",
-              }}
+              style={{ color: isDark ? "var(--snow)" : "var(--primary)", minWidth: "60px" }}
             >
               <span style={{ fontSize: "1.3rem" }}>＋</span>
               <span style={{ fontSize: "10px", fontWeight: 600 }}>Add</span>
             </button>
 
-            {/* Save */}
             <button
               onClick={handleSave}
               disabled={saving}
               className="flex flex-col items-center gap-1 px-3 py-1 rounded-xl transition-opacity hover:opacity-80 disabled:opacity-50 flex-1 sm:flex-none sm:px-4 sm:py-2"
               style={{
-                backgroundColor:
-                  window.innerWidth < 640 ? "transparent" : "var(--plum)",
-                color:
-                  window.innerWidth < 640
-                    ? isDark
-                      ? "var(--snow)"
-                      : "var(--primary)"
-                    : "white",
+                backgroundColor: window.innerWidth < 640 ? "transparent" : "var(--plum)",
+                color: window.innerWidth < 640 ? isDark ? "var(--snow)" : "var(--primary)" : "white",
                 minWidth: "60px",
               }}
             >
-              <span className="sm:hidden" style={{ fontSize: "1.3rem" }}>
-                💾
-              </span>
-              <span
-                style={{ fontSize: "10px", fontWeight: 600 }}
-                className="sm:hidden"
-              >
+              <span className="sm:hidden" style={{ fontSize: "1.3rem" }}>💾</span>
+              <span style={{ fontSize: "10px", fontWeight: 600 }} className="sm:hidden">
                 {saving ? "Saving..." : "Save"}
               </span>
-              <span className="hidden sm:inline text-sm">
-                {saving ? "Saving..." : "Save Board"}
-              </span>
+              <span className="hidden sm:inline text-sm">{saving ? "Saving..." : "Save Board"}</span>
             </button>
 
-            {/* Clear */}
             <button
               onClick={clearBoard}
               className="flex flex-col items-center gap-1 px-3 py-1 rounded-xl transition-opacity hover:opacity-80 flex-1 sm:flex-none sm:px-4 sm:py-2"
               style={{
-                backgroundColor:
-                  window.innerWidth < 640 ? "transparent" : "var(--rose)",
-                color:
-                  window.innerWidth < 640
-                    ? isDark
-                      ? "var(--snow)"
-                      : "var(--primary)"
-                    : "white",
+                backgroundColor: window.innerWidth < 640 ? "transparent" : "var(--rose)",
+                color: window.innerWidth < 640 ? isDark ? "var(--snow)" : "var(--primary)" : "white",
                 minWidth: "60px",
               }}
             >
-              <span className="sm:hidden" style={{ fontSize: "1.3rem" }}>
-                🗑️
-              </span>
-              <span
-                style={{ fontSize: "10px", fontWeight: 600 }}
-                className="sm:hidden"
-              >
-                Clear
-              </span>
+              <span className="sm:hidden" style={{ fontSize: "1.3rem" }}>🗑️</span>
+              <span style={{ fontSize: "10px", fontWeight: 600 }} className="sm:hidden">Clear</span>
               <span className="hidden sm:inline text-sm">Clear Board</span>
             </button>
 
-            {/* Download */}
             <button
               onClick={handleDownload}
               disabled={downloading}
               className="flex flex-col items-center gap-1 px-3 py-1 rounded-xl transition-opacity hover:opacity-80 disabled:opacity-50 flex-1 sm:flex-none sm:px-4 sm:py-2"
               style={{
-                backgroundColor:
-                  window.innerWidth < 640
-                    ? "transparent"
-                    : "var(--lavender)",
-                color:
-                  window.innerWidth < 640
-                    ? isDark
-                      ? "var(--snow)"
-                      : "var(--primary)"
-                    : "white",
+                backgroundColor: window.innerWidth < 640 ? "transparent" : "var(--lavender)",
+                color: window.innerWidth < 640 ? isDark ? "var(--snow)" : "var(--primary)" : "white",
                 minWidth: "60px",
               }}
             >
-              <span className="sm:hidden" style={{ fontSize: "1.3rem" }}>
-                ⬇️
-              </span>
-              <span
-                style={{ fontSize: "10px", fontWeight: 600 }}
-                className="sm:hidden"
-              >
+              <span className="sm:hidden" style={{ fontSize: "1.3rem" }}>⬇️</span>
+              <span style={{ fontSize: "10px", fontWeight: 600 }} className="sm:hidden">
                 {downloading ? "..." : "Download"}
               </span>
               <span className="hidden sm:inline text-sm">
@@ -885,37 +822,23 @@ export default function DynamicMoodBoard({
             </button>
           </div>
 
-          {/* Mobile add content sheet */}
           {controlsOpen && (
             <div
               className="sm:hidden fixed bottom-16 left-0 right-0 z-40 p-4 rounded-t-2xl shadow-2xl flex flex-col gap-3"
               style={{
                 backgroundColor: isDark ? "#1a1428" : "#f9f6ff",
-                borderTop: `1px solid ${
-                  isDark
-                    ? "rgba(255,255,255,0.1)"
-                    : "rgba(84,70,131,0.15)"
-                }`,
+                borderTop: `1px solid ${isDark ? "rgba(255,255,255,0.1)" : "rgba(84,70,131,0.15)"}`,
               }}
             >
               <div className="flex items-center justify-between mb-1">
-                <span
-                  className="font-semibold text-sm"
-                  style={{
-                    color: isDark ? "var(--snow)" : "var(--primary)",
-                  }}
-                >
+                <span className="font-semibold text-sm" style={{ color: isDark ? "var(--snow)" : "var(--primary)" }}>
                   Add Content
                 </span>
                 <button
                   onClick={() => setControlsOpen(false)}
                   className="text-lg font-bold hover:opacity-60"
-                  style={{
-                    color: isDark ? "var(--snow)" : "var(--primary)",
-                  }}
-                >
-                  ×
-                </button>
+                  style={{ color: isDark ? "var(--snow)" : "var(--primary)" }}
+                >×</button>
               </div>
 
               <div className="flex gap-2">
@@ -927,15 +850,10 @@ export default function DynamicMoodBoard({
                   style={inputStyle}
                 />
                 <button
-                  onClick={() => {
-                    addItem("text", textInput);
-                    setControlsOpen(false);
-                  }}
+                  onClick={() => { addItem("text", textInput); setControlsOpen(false); }}
                   className={btnBase}
                   style={{ backgroundColor: "var(--primary)" }}
-                >
-                  Add
-                </button>
+                >Add</button>
               </div>
 
               <div className="flex gap-2">
@@ -948,25 +866,17 @@ export default function DynamicMoodBoard({
                   style={inputStyle}
                 />
                 <button
-                  onClick={() => {
-                    addItem("image", imageUrl);
-                    setControlsOpen(false);
-                  }}
+                  onClick={() => { addItem("image", imageUrl); setControlsOpen(false); }}
                   className={btnBase}
                   style={{ backgroundColor: "var(--primary)" }}
-                >
-                  Add
-                </button>
+                >Add</button>
               </div>
 
               <input
                 ref={fileInputRef}
                 type="file"
                 accept="image/*"
-                onChange={(e) => {
-                  handleFileUpload(e);
-                  setControlsOpen(false);
-                }}
+                onChange={(e) => { handleFileUpload(e); setControlsOpen(false); }}
                 className="hidden"
               />
               <button

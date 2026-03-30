@@ -422,18 +422,18 @@ export default function DynamicMoodBoard({
           }}
         >
           {[
-            { top: "12%", left: "8%",  size: 24, delay: "0s",    dur: "1.8s" },
-            { top: "20%", left: "85%", size: 32, delay: "0.3s",  dur: "2.1s" },
-            { top: "35%", left: "15%", size: 20, delay: "0.7s",  dur: "1.5s" },
-            { top: "15%", left: "50%", size: 28, delay: "1.1s",  dur: "2.3s" },
-            { top: "60%", left: "90%", size: 24, delay: "0.5s",  dur: "1.9s" },
-            { top: "70%", left: "20%", size: 36, delay: "1.4s",  dur: "2.0s" },
-            { top: "80%", left: "60%", size: 20, delay: "0.2s",  dur: "1.6s" },
-            { top: "45%", left: "75%", size: 28, delay: "0.9s",  dur: "2.2s" },
-            { top: "88%", left: "35%", size: 24, delay: "1.6s",  dur: "1.7s" },
-            { top: "50%", left: "5%",  size: 32, delay: "0.4s",  dur: "2.4s" },
-            { top: "25%", left: "40%", size: 20, delay: "1.2s",  dur: "1.5s" },
-            { top: "75%", left: "78%", size: 28, delay: "0.8s",  dur: "2.0s" },
+            { top: "12%", left: "8%",  size: 24, delay: "0s",    dur: "3.2s" },
+            { top: "20%", left: "85%", size: 32, delay: "0.5s",  dur: "4.1s" },
+            { top: "35%", left: "15%", size: 20, delay: "1.1s",  dur: "3.5s" },
+            { top: "15%", left: "50%", size: 28, delay: "1.8s",  dur: "4.3s" },
+            { top: "60%", left: "90%", size: 24, delay: "0.7s",  dur: "3.8s" },
+            { top: "70%", left: "20%", size: 36, delay: "2.2s",  dur: "4.0s" },
+            { top: "80%", left: "60%", size: 20, delay: "0.3s",  dur: "3.3s" },
+            { top: "45%", left: "75%", size: 28, delay: "1.5s",  dur: "4.2s" },
+            { top: "88%", left: "35%", size: 24, delay: "2.6s",  dur: "3.7s" },
+            { top: "50%", left: "5%",  size: 32, delay: "0.9s",  dur: "4.4s" },
+            { top: "25%", left: "40%", size: 20, delay: "1.9s",  dur: "3.1s" },
+            { top: "75%", left: "78%", size: 28, delay: "1.3s",  dur: "4.0s" },
           ].map((sp, i) => (
             <span
               key={i}
@@ -474,9 +474,11 @@ export default function DynamicMoodBoard({
 
           <style>{`
             @keyframes mm-twinkle {
-              0%   { opacity: 0.2; transform: scale(0.6) rotate(0deg); }
-              50%  { opacity: 1;   transform: scale(1.2) rotate(15deg); }
-              100% { opacity: 0.3; transform: scale(0.8) rotate(-10deg); }
+              0%   { opacity: 0.2; transform: scale(0.5); filter: brightness(0.8); }
+              25%  { opacity: 1;   transform: scale(1.3); filter: brightness(1.8); }
+              50%  { opacity: 0.4; transform: scale(0.7); filter: brightness(0.9); }
+              75%  { opacity: 1;   transform: scale(1.2); filter: brightness(2.0); }
+              100% { opacity: 0.2; transform: scale(0.5); filter: brightness(0.8); }
             }
             }
             @keyframes mm-fade {

@@ -121,6 +121,10 @@ export default function DynamicMoodBoard({
 
   useEffect(() => {
     if (boardId) return;
+    setItems([]);
+    setBoardName("");
+    setBoardMood("");
+    setSaved(false);
     setBoardOriginalWidth(BOARD_MIN_WIDTH);
     setBoardOriginalHeight(BOARD_MIN_HEIGHT);
     setBoardReady(true);

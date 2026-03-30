@@ -204,7 +204,7 @@ export default function DynamicMoodBoard({
 
         const computedScale = calculateAndSetScale(savedWidth, savedHeight);
         boardScaleRef.current = computedScale;
-        // Do NOT set initialScale — let boardScale drive everything consistently
+        setInitialScale(computedScale);
         setItems(loadedItems);
         setBoardReady(true);
         setBoardLoading(false);

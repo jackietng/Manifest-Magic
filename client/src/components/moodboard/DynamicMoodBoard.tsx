@@ -239,7 +239,6 @@ export default function DynamicMoodBoard({
   const addItem = useCallback(
     (type: "image" | "text", content: string) => {
       if (!content.trim()) return;
-      const currentScale = boardScaleRef.current;
 
       if (type === "image") {
         const isSupabaseImage = content.includes("supabase.co");
@@ -268,7 +267,7 @@ export default function DynamicMoodBoard({
 
           setItems((prev) => [...prev, {
             id: uuid(), type: "image", content: proxyUrl,
-            x: Math.round(50 / currentScale), y: Math.round(50 / currentScale),
+            x: 50, y: 50,
             width, height, zIndex: prev.length + 1,
           }]);
           setImageUrl("");
@@ -277,8 +276,8 @@ export default function DynamicMoodBoard({
       } else {
         setItems((prev) => [...prev, {
           id: uuid(), type: "text", content,
-          x: Math.round(100 / currentScale), y: Math.round(100 / currentScale),
-          width: Math.round(200 / currentScale), height: Math.round(60 / currentScale),
+          x: 100, y: 100,
+          width: 200, height: 60,
           zIndex: prev.length + 1,
         }]);
         setTextInput("");

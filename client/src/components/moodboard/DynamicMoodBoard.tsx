@@ -422,18 +422,18 @@ export default function DynamicMoodBoard({
           }}
         >
           {[
-            { top: "12%", left: "8%",  size: 5, delay: "0s",    dur: "1.8s" },
-            { top: "20%", left: "85%", size: 7, delay: "0.3s",  dur: "2.1s" },
-            { top: "35%", left: "15%", size: 4, delay: "0.7s",  dur: "1.5s" },
-            { top: "15%", left: "50%", size: 6, delay: "1.1s",  dur: "2.3s" },
-            { top: "60%", left: "90%", size: 5, delay: "0.5s",  dur: "1.9s" },
-            { top: "70%", left: "20%", size: 8, delay: "1.4s",  dur: "2.0s" },
-            { top: "80%", left: "60%", size: 4, delay: "0.2s",  dur: "1.6s" },
-            { top: "45%", left: "75%", size: 6, delay: "0.9s",  dur: "2.2s" },
-            { top: "88%", left: "35%", size: 5, delay: "1.6s",  dur: "1.7s" },
-            { top: "50%", left: "5%",  size: 7, delay: "0.4s",  dur: "2.4s" },
-            { top: "25%", left: "40%", size: 4, delay: "1.2s",  dur: "1.5s" },
-            { top: "75%", left: "78%", size: 6, delay: "0.8s",  dur: "2.0s" },
+            { top: "12%", left: "8%",  size: 24, delay: "0s",    dur: "1.8s" },
+            { top: "20%", left: "85%", size: 32, delay: "0.3s",  dur: "2.1s" },
+            { top: "35%", left: "15%", size: 20, delay: "0.7s",  dur: "1.5s" },
+            { top: "15%", left: "50%", size: 28, delay: "1.1s",  dur: "2.3s" },
+            { top: "60%", left: "90%", size: 24, delay: "0.5s",  dur: "1.9s" },
+            { top: "70%", left: "20%", size: 36, delay: "1.4s",  dur: "2.0s" },
+            { top: "80%", left: "60%", size: 20, delay: "0.2s",  dur: "1.6s" },
+            { top: "45%", left: "75%", size: 28, delay: "0.9s",  dur: "2.2s" },
+            { top: "88%", left: "35%", size: 24, delay: "1.6s",  dur: "1.7s" },
+            { top: "50%", left: "5%",  size: 32, delay: "0.4s",  dur: "2.4s" },
+            { top: "25%", left: "40%", size: 20, delay: "1.2s",  dur: "1.5s" },
+            { top: "75%", left: "78%", size: 28, delay: "0.8s",  dur: "2.0s" },
           ].map((sp, i) => (
             <span
               key={i}
@@ -443,9 +443,9 @@ export default function DynamicMoodBoard({
                 left: sp.left,
                 width: `${sp.size}px`,
                 height: `${sp.size}px`,
-                borderRadius: "50%",
-                background: "radial-gradient(circle, #ffe066 0%, #b8860b 60%, transparent 100%)",
-                boxShadow: "0 0 8px rgba(184,134,11,0.95), 0 0 18px rgba(184,134,11,0.6)",
+                backgroundColor: "#d4af37",
+                clipPath: "polygon(50% 0%, 61% 39%, 100% 50%, 61% 61%, 50% 100%, 39% 61%, 0% 50%, 39% 39%)",
+                boxShadow: `0 0 ${sp.size}px rgba(212,175,55,0.9), 0 0 ${sp.size * 2}px rgba(212,175,55,0.5)`,
                 animation: `mm-twinkle ${sp.dur} ${sp.delay} ease-in-out infinite alternate`,
                 opacity: 0,
               }}
@@ -473,8 +473,9 @@ export default function DynamicMoodBoard({
 
           <style>{`
             @keyframes mm-twinkle {
-              0%   { opacity: 1; transform: scale(1); }
-              100% { opacity: 1; transform: scale(1); }
+              0%   { opacity: 0.2; transform: scale(0.6) rotate(0deg); }
+              50%  { opacity: 1;   transform: scale(1.2) rotate(15deg); }
+              100% { opacity: 0.3; transform: scale(0.8) rotate(-10deg); }
             }
             }
             @keyframes mm-fade {

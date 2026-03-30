@@ -473,8 +473,9 @@ export default function DynamicMoodBoard({
 
           <style>{`
             @keyframes mm-twinkle {
-              0%   { opacity: 0; transform: scale(0.5); }
-              100% { opacity: 1; transform: scale(1.4); }
+              0%   { opacity: 1; transform: scale(1); }
+              100% { opacity: 1; transform: scale(1); }
+            }
             }
             @keyframes mm-fade {
               0%   { opacity: 0.4; }

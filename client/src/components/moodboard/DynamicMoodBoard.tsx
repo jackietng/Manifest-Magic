@@ -68,11 +68,7 @@ export default function DynamicMoodBoard({
   const [saved, setSaved] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [downloading, setDownloading] = useState(false);
-  // Start in loading state if we're opening a saved board
-  const [boardLoading, setBoardLoading] = useState(() => {
-    const params = new URLSearchParams(window.location.search);
-    return !!params.get("board");
-  });
+  const [boardLoading, setBoardLoading] = useState(false);
   const [boardError, setBoardError] = useState("");
   const [boardScale, setBoardScale] = useState(0);
   // Tracks the scale computed at load time so items render correctly on first paint
@@ -591,8 +587,6 @@ export default function DynamicMoodBoard({
     setSaving(false);
   };
 
-  if (boardLoading) return <BoardLoader />;
-
   return (
     <div className="pb-20 sm:pb-4 min-h-screen">
       {boardError && (
@@ -604,7 +598,10 @@ export default function DynamicMoodBoard({
         </div>
       )}
 
-      <>
+      {boardLoading ? (
+        <BoardLoader />
+      ) : (
+        <>
           <div className="px-2 sm:px-4 pt-2 sm:pt-4 mb-2 sm:mb-3 flex flex-col gap-2">
             <input
               placeholder="Board name"
@@ -890,7 +887,8 @@ export default function DynamicMoodBoard({
               </button>
             </div>
           )}
-      </>
+        </>
+      )}
     </div>
   );
 }

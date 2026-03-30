@@ -4,9 +4,9 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { v4 as uuid } from "uuid";
 import { supabase } from "../../lib/supabaseClient";
 import MoodItem from "../../components/moodboard/MoodItem";
+import BoardLoader from "../../components/moodboard/BoardLoader";
 import { useTheme } from "../../context/ThemeContext";
 import { useMood } from "../../context/MoodContext";
-import MagicLoader from "../../components/moodboard/BoardLoader";
 
 export type MoodItemType = {
   id: string;
@@ -68,10 +68,12 @@ export default function DynamicMoodBoard({
   const [saved, setSaved] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [downloading, setDownloading] = useState(false);
+  // Start in loading state if we're opening a saved board
   const [boardLoading, setBoardLoading] = useState(false);
   const [boardReady, setBoardReady] = useState(false);
   const [boardError, setBoardError] = useState("");
-  const [boardScale, setBoardScale] = useState(1);
+  const [boardScale, setBoardScale] = useState(0);
+  // Tracks the scale computed at load time so items render correctly on first paint
   const [initialScale, setInitialScale] = useState<number | null>(null);
   const [boardOriginalWidth, setBoardOriginalWidth] = useState<number | null>(null);
   const [boardOriginalHeight, setBoardOriginalHeight] = useState<number | null>(null);
@@ -133,6 +135,8 @@ export default function DynamicMoodBoard({
 
   useEffect(() => {
     if (boardId) return;
+    // Give new boards a fixed logical size so save/load is consistent
+    // across devices regardless of viewport size
     setBoardOriginalWidth(BOARD_MIN_WIDTH);
     setBoardOriginalHeight(BOARD_MIN_HEIGHT);
     setBoardReady(true);
@@ -167,7 +171,7 @@ export default function DynamicMoodBoard({
 
       if (boardError || !board) {
         setBoardError("Failed to load board. Please try again.");
-        setTimeout(() => setBoardLoading(false), 800);
+        setBoardLoading(false);
         return;
       }
 
@@ -206,12 +210,13 @@ export default function DynamicMoodBoard({
         })
       );
 
+      // Keep retrying until boardContainerRef is mounted (mobile needs more frames).
+      // Always resolves — never leaves the board stuck on "Loading...".
       const tryMount = (attemptsLeft: number) => {
         if (boardContainerRef.current) {
           // Container ready — compute correct scale then render items
           const computedScale = calculateAndSetScale(savedWidth, savedHeight);
           boardScaleRef.current = computedScale;
-          setBoardScale(computedScale);
           setInitialScale(computedScale);
           setItems(loadedItems);
           setBoardReady(true);
@@ -221,6 +226,7 @@ export default function DynamicMoodBoard({
         } else {
           // Container never appeared — render anyway with default scale
           setItems(loadedItems);
+          setBoardReady(true);
           setBoardLoading(false);
         }
       };
@@ -586,6 +592,8 @@ export default function DynamicMoodBoard({
     setSaving(false);
   };
 
+  if (boardLoading) return <BoardLoader />;
+
   return (
     <div className="pb-20 sm:pb-4 min-h-screen">
       {boardError && (
@@ -597,10 +605,7 @@ export default function DynamicMoodBoard({
         </div>
       )}
 
-      {boardLoading ? (
-        <MagicLoader />
-      ) : (
-        <>
+      <>
           <div className="px-2 sm:px-4 pt-2 sm:pt-4 mb-2 sm:mb-3 flex flex-col gap-2">
             <input
               placeholder="Board name"
@@ -611,14 +616,14 @@ export default function DynamicMoodBoard({
               style={inputStyle}
             />
 
-            {(boardId ? boardMood : mood) && (
+            {(mood || boardMood) && (
               <p
                 className="text-center text-sm sm:text-md italic"
                 style={{ color: isDark ? "var(--snow)" : "var(--primary)" }}
               >
                 Today you were feeling{" "}
                 <span className="font-semibold italic">
-                  {boardId ? boardMood : mood}
+                  {mood || boardMood}
                 </span>
               </p>
             )}
@@ -645,6 +650,9 @@ export default function DynamicMoodBoard({
                 height: `${(boardOriginalHeight || BOARD_MIN_HEIGHT) * boardScale}px`,
                 overflow: "hidden",
                 borderRadius: "0.75rem",
+                // Hide board until tryMount has confirmed the correct scale.
+                // boardScale starts at 1 but saved boards need a scale < 1,
+                // so we stay hidden until initialScale is set by tryMount.
                 opacity: boardReady ? 1 : 0,
               }}
             >
@@ -886,8 +894,7 @@ export default function DynamicMoodBoard({
               </button>
             </div>
           )}
-        </>
-      )}
+      </>
     </div>
   );
 }

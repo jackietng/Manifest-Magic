@@ -406,44 +406,69 @@ export default function DynamicMoodBoard({
             flexDirection: "column",
             alignItems: "center",
             justifyContent: "center",
-            backgroundColor: "transparent",
+            backgroundColor: isDark ? "#1a1428" : "#f4f1f0",
             zIndex: 9999,
           }}
         >
-          {/* Sparkles */}
-          {Array.from({ length: 20 }).map((_, i) => (
+          {[
+            { top: "12%", left: "8%",  size: 5, delay: "0s",    dur: "1.8s" },
+            { top: "20%", left: "85%", size: 7, delay: "0.3s",  dur: "2.1s" },
+            { top: "35%", left: "15%", size: 4, delay: "0.7s",  dur: "1.5s" },
+            { top: "15%", left: "50%", size: 6, delay: "1.1s",  dur: "2.3s" },
+            { top: "60%", left: "90%", size: 5, delay: "0.5s",  dur: "1.9s" },
+            { top: "70%", left: "20%", size: 8, delay: "1.4s",  dur: "2.0s" },
+            { top: "80%", left: "60%", size: 4, delay: "0.2s",  dur: "1.6s" },
+            { top: "45%", left: "75%", size: 6, delay: "0.9s",  dur: "2.2s" },
+            { top: "88%", left: "35%", size: 5, delay: "1.6s",  dur: "1.7s" },
+            { top: "50%", left: "5%",  size: 7, delay: "0.4s",  dur: "2.4s" },
+            { top: "25%", left: "40%", size: 4, delay: "1.2s",  dur: "1.5s" },
+            { top: "75%", left: "78%", size: 6, delay: "0.8s",  dur: "2.0s" },
+          ].map((sp, i) => (
             <span
               key={i}
               style={{
                 position: "absolute",
-                width: `${4 + Math.random() * 8}px`,
-                height: `${4 + Math.random() * 8}px`,
+                top: sp.top,
+                left: sp.left,
+                width: sp.size,
+                height: sp.size,
                 borderRadius: "50%",
-                backgroundColor: ["#b485d3","#a485b4","#e4b5fb","#544683","#ae89cf"][i % 5],
-                top: `${10 + Math.random() * 80}%`,
-                left: `${5 + Math.random() * 90}%`,
-                animation: `mm-twinkle ${1.2 + Math.random()}s ${Math.random() * 2}s ease-in-out infinite alternate`,
+                background: "radial-gradient(circle, #fff6c2 0%, #d4af37 60%, transparent 100%)",
+                boxShadow: "0 0 6px rgba(212,175,55,0.9), 0 0 12px rgba(212,175,55,0.5)",
+                animation: `mm-twinkle ${sp.dur} ${sp.delay} ease-in-out infinite alternate`,
                 opacity: 0,
               }}
             />
           ))}
+
+          {/* Animated text */}
           <p style={{
-            color: isDark ? "var(--snow)" : "var(--primary)",
-            fontSize: "15px",
+            color: isDark ? "#f4f1f0" : "#544683",
+            fontSize: "1.1rem",
             fontWeight: 600,
-            letterSpacing: "0.05em",
+            letterSpacing: "0.12em",
+            animation: "mm-fade 1.5s ease-in-out infinite alternate",
           }}>
-            Manifesting your vision ✨
+            Manifesting your vision
           </p>
-          {/* Keyframes */}
+          <p style={{
+            color: isDark ? "#c4b5d4" : "#a485b4",
+            fontSize: "0.8rem",
+            letterSpacing: "0.2em",
+            marginTop: 8,
+            animation: "mm-fade 1.5s 0.75s ease-in-out infinite alternate",
+          }}>
+            ✦ &nbsp; ✦ &nbsp; ✦
+          </p>
+
           <style>{`
             @keyframes mm-twinkle {
-              0% { opacity: 0; transform: scale(0.5); }
-              100% { opacity: 1; transform: scale(1.3); }
+              0%   { opacity: 0; transform: scale(0.5); }
+              100% { opacity: 1; transform: scale(1.4); }
             }
-            @keyframes mm-pulse {
-              0%, 100% { transform: scale(1); }
-              50% { transform: scale(1.08); filter: brightness(1.2); }
+            @keyframes mm-fade {
+              0%   { opacity: 0.4; }
+              100% { opacity: 1; }
             }
           `}</style>
         </div>

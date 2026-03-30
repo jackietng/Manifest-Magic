@@ -1,5 +1,4 @@
 // src/components/dashboard/SavedMoodBoards.tsx
-// DEBUG VERSION — remove console.logs after diagnosis
 import { useEffect, useRef, useState } from "react";
 import { supabase } from "../../lib/supabaseClient";
 import { useNavigate } from "react-router-dom";
@@ -195,16 +194,14 @@ export default function SavedMoodBoards() {
 
   const getPreviewScale = (boardWidth: number, boardHeight: number) => {
     const isMobile = window.innerWidth < 640;
-    // Modal: max-h-[90vh], p-4 outer (16px*2=32px vertical padding on modal)
-    // Header row: 28px text + 12px mb-3 = ~40px
-    // Footer row: 36px buttons + 12px mt-3 = ~48px
-    // Total chrome: 32 + 40 + 48 = 120px
-    const CHROME = 120;
-    const SIDE_PAD = 32;
+    // Outer wrapper p-4 (16px each side = 32px) + modal inner p-4 (32px more) = 64px total horiz chrome
+    // Vertical: header ~40px + footer ~44px + grid gaps 24px + modal p-4 top+bottom 32px = ~140px
+    const HORIZ_CHROME = 64;
+    const VERT_CHROME = 140;
     const availableWidth = isMobile
-      ? window.innerWidth - SIDE_PAD
-      : Math.min(window.innerWidth * 0.9, 800) - SIDE_PAD;
-    const availableHeight = window.innerHeight * 0.9 - CHROME;
+      ? window.innerWidth - HORIZ_CHROME
+      : Math.min(window.innerWidth * 0.9, 800) - HORIZ_CHROME;
+    const availableHeight = window.innerHeight * 0.9 - VERT_CHROME;
     const widthScale = availableWidth / boardWidth;
     const heightScale = availableHeight / boardHeight;
     return Math.min(1, widthScale, heightScale);

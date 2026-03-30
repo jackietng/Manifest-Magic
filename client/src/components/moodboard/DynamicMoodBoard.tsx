@@ -69,6 +69,8 @@ export default function DynamicMoodBoard({
   const [boardLoading, setBoardLoading] = useState(false);
   const [boardError, setBoardError] = useState("");
   const [boardScale, setBoardScale] = useState(1);
+  // Tracks the scale computed at load time so items render correctly on first paint
+  const [initialScale, setInitialScale] = useState<number | null>(null);
   const [boardOriginalWidth, setBoardOriginalWidth] = useState<number | null>(null);
   const [boardOriginalHeight, setBoardOriginalHeight] = useState<number | null>(null);
   const [controlsOpen, setControlsOpen] = useState(false);
@@ -91,6 +93,8 @@ export default function DynamicMoodBoard({
 
   useEffect(() => {
     boardScaleRef.current = boardScale;
+    // Once boardScale state has caught up to the loaded scale, clear the override
+    setInitialScale((prev) => (prev !== null && Math.abs(prev - boardScale) < 0.001 ? null : prev));
   }, [boardScale]);
 
   const calculateAndSetScale = useCallback(
@@ -204,6 +208,9 @@ export default function DynamicMoodBoard({
           // Container ready — compute correct scale then render items
           const computedScale = calculateAndSetScale(savedWidth, savedHeight);
           boardScaleRef.current = computedScale;
+          // Set initialScale and items together so MoodItem gets the right
+          // scale on its very first render — boardScale state may lag one cycle
+          setInitialScale(computedScale);
           setItems(loadedItems);
           setBoardLoading(false);
         } else if (attemptsLeft > 0) {
@@ -680,7 +687,7 @@ export default function DynamicMoodBoard({
                     onRemove={removeItem}
                     onBringToFront={bringToFront}
                     onSendToBack={sendToBack}
-                    scale={boardScale}
+                    scale={initialScale ?? boardScale}
                   />
                 ))}
               </div>

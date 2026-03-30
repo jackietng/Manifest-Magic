@@ -243,6 +243,7 @@ export default function MoodItem({
         isDragging.current = false;
         const unscaledX = d.x / scale;
         const unscaledY = d.y / scale;
+        console.log("dragStop — d.x:", d.x, "d.y:", d.y, "scale:", scale, "stored x:", unscaledX, "stored y:", unscaledY);
         setPos({ x: unscaledX, y: unscaledY });
         onChange(item.id, { x: unscaledX, y: unscaledY });
       }}

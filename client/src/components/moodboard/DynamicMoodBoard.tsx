@@ -97,7 +97,7 @@ export default function DynamicMoodBoard({
   const calculateAndSetScale = useCallback(
     (originalWidth: number | null, originalHeight: number | null): number => {
       if (!boardContainerRef.current) return 1;
-      const containerWidth = boardContainerRef.current.offsetWidth;
+      const containerWidth = boardContainerRef.current.clientWidth - 16;
       const viewportHeight = window.innerWidth < 640
         ? window.innerHeight * 0.92
         : window.innerHeight * 0.8;

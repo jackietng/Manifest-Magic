@@ -82,6 +82,7 @@ export default function MoodItem({
   onSendToBack: (id: string) => void;
   scale?: number;
 }) {
+  console.log("MoodItem render - scale prop:", scale, "item:", item.id.slice(0,6));
   const [pos, setPos] = useState({ x: item.x, y: item.y });
   const [size, setSize] = useState({ width: item.width, height: item.height });
   const [selected, setSelected] = useState(false);

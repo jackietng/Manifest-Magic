@@ -208,3 +208,16 @@ body.dark .mood-logger h2 {
 .footer a:hover {
   text-decoration: underline;
 }
+
+@keyframes mm-twinkle {
+  0%   { opacity: 0.2; transform: scale(0.5); filter: brightness(0.8); }
+  25%  { opacity: 1;   transform: scale(1.3); filter: brightness(1.8); }
+  50%  { opacity: 0.4; transform: scale(0.7); filter: brightness(0.9); }
+  75%  { opacity: 1;   transform: scale(1.2); filter: brightness(2.0); }
+  100% { opacity: 0.2; transform: scale(0.5); filter: brightness(0.8); }
+}
+
+@keyframes mm-fade {
+  0%   { opacity: 0.4; }
+  100% { opacity: 0; }
+}

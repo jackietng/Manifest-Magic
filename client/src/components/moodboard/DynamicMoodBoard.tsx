@@ -437,6 +437,7 @@ export default function DynamicMoodBoard({
             justifyContent: "center",
             backgroundColor: "transparent",
             zIndex: 9999,
+            visibility: "visible",
           }}
         >
           {[
@@ -478,7 +479,7 @@ export default function DynamicMoodBoard({
                 boxShadow: `0 0 ${sp.size * 0.5}px rgba(255,223,100,1), 0 0 ${sp.size}px rgba(212,175,55,0.9), 0 0 ${sp.size * 2}px rgba(212,175,55,0.7), 0 0 ${sp.size * 3}px rgba(184,134,11,0.4)`,
                 filter: `drop-shadow(0 0 ${sp.size * 0.4}px rgba(255,215,0,0.95)) drop-shadow(0 0 ${sp.size * 0.8}px rgba(212,175,55,0.7))`,
                 animation: `mm-twinkle ${sp.dur} ${sp.delay} ease-in-out infinite alternate`,
-                opacity: 0,
+                opacity: 1,
               }}
             />
           ))}
@@ -491,23 +492,13 @@ export default function DynamicMoodBoard({
           }}>
             Manifesting your vision...
           </p>
-          <style>{`
-            @keyframes mm-twinkle {
-              0%   { opacity: 0.2; transform: scale(0.5); filter: brightness(0.8); }
-              25%  { opacity: 1;   transform: scale(1.3); filter: brightness(1.8); }
-              50%  { opacity: 0.4; transform: scale(0.7); filter: brightness(0.9); }
-              75%  { opacity: 1;   transform: scale(1.2); filter: brightness(2.0); }
-              100% { opacity: 0.2; transform: scale(0.5); filter: brightness(0.8); }
-            }
-            @keyframes mm-fade {
-              0%   { opacity: 0.4; }
-              100% { opacity: 1; }
-            }
-          `}</style>
         </div>
       )}
 
-      <div style={{ display: boardLoading ? "none" : "block" }}>
+      <div style={{ 
+        visibility: boardLoading ? "hidden" : "visible",
+        pointerEvents: boardLoading ? "none" : "auto",
+      }}>
         <div className="px-2 sm:px-4 pt-2 sm:pt-4 mb-2 sm:mb-3 flex flex-col gap-2">
           <input
             placeholder="Board name" type="text" value={boardName}

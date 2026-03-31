@@ -530,9 +530,35 @@ export default function DynamicMoodBoard({
               </p>
             )}
             {saved && (
-              <p className="text-center text-sm" style={{ color: isDark ? "var(--lavender)" : "var(--primary)" }}>
-                Board saved! ✨
-              </p>
+              <div
+                style={{
+                  position: "fixed",
+                  inset: 0,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  zIndex: 9998,
+                  pointerEvents: "none",
+                }}
+              >
+                <div
+                  style={{
+                    backgroundColor: isDark ? "rgba(42, 34, 58, 0.92)" : "rgba(255, 255, 255, 0.92)",
+                    color: isDark ? "var(--snow)" : "var(--primary)",
+                    padding: "20px 36px",
+                    borderRadius: "1.5rem",
+                    fontSize: "1.1rem",
+                    fontWeight: 600,
+                    letterSpacing: "0.05em",
+                    boxShadow: "0 8px 32px rgba(84,70,131,0.25)",
+                    backdropFilter: "blur(8px)",
+                    WebkitBackdropFilter: "blur(8px)",
+                    border: `1px solid ${isDark ? "rgba(255,255,255,0.1)" : "rgba(84,70,131,0.15)"}`,
+                  }}
+                >
+                  Board saved! ✨
+                </div>
+              </div>
             )}
           </div>
 

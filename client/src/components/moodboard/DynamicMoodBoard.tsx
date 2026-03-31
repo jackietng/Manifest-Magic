@@ -529,37 +529,6 @@ export default function DynamicMoodBoard({
                 Today you were feeling <span className="font-semibold italic">{mood || boardMood}</span>
               </p>
             )}
-            {saved && (
-              <div
-                style={{
-                  position: "fixed",
-                  inset: 0,
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  zIndex: 9998,
-                  pointerEvents: "none",
-                }}
-              >
-                <div
-                  style={{
-                    backgroundColor: isDark ? "rgba(42, 34, 58, 0.92)" : "rgba(255, 255, 255, 0.92)",
-                    color: isDark ? "var(--snow)" : "var(--primary)",
-                    padding: "20px 36px",
-                    borderRadius: "1.5rem",
-                    fontSize: "1.1rem",
-                    fontWeight: 600,
-                    letterSpacing: "0.05em",
-                    boxShadow: "0 8px 32px rgba(84,70,131,0.25)",
-                    backdropFilter: "blur(8px)",
-                    WebkitBackdropFilter: "blur(8px)",
-                    border: `1px solid ${isDark ? "rgba(255,255,255,0.1)" : "rgba(84,70,131,0.15)"}`,
-                  }}
-                >
-                  Board saved! ✨
-                </div>
-              </div>
-            )}
           </div>
 
           <div ref={boardContainerRef} className="w-full flex justify-center px-2 sm:px-4">
@@ -600,6 +569,32 @@ export default function DynamicMoodBoard({
                     scale={initialScale ?? boardScale}
                   />
                 ))}
+                {saved && (
+                <div
+                  style={{
+                    position: "absolute",
+                    inset: 0,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    zIndex: 9998,
+                    pointerEvents: "none",
+                    backgroundColor: isDark ? "rgba(42, 34, 58, 0.75)" : "rgba(255, 255, 255, 0.75)",
+                    backdropFilter: "blur(6px)",
+                    WebkitBackdropFilter: "blur(6px)",
+                    borderRadius: "0.75rem",
+                  }}
+                >
+                  <p style={{
+                    color: isDark ? "var(--snow)" : "var(--primary)",
+                    fontSize: "1.2rem",
+                    fontWeight: 700,
+                    letterSpacing: "0.08em",
+                  }}>
+                    Board saved! ✨
+                  </p>
+                </div>
+              )}
               </div>
             </div>
           </div>

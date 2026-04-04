@@ -57,6 +57,16 @@ export default function Dashboard() {
     savePendingBoard();
   }, []);
 
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        setSavedBoardsRefreshKey(k => k + 1);
+      }
+    };
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () => document.removeEventListener("visibilitychange", handleVisibilityChange);
+  }, []);
+
   return (
     <>
       <div className="p-6 max-w-4xl mx-auto">

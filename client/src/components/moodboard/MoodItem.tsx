@@ -259,6 +259,9 @@ export default function MoodItem({
         setSize({ width: newWidth, height: newHeight });
       }}
       onResizeStop={(_, __, ref, _delta, position) => {
+        console.log("scale at resize stop:", scale);
+        console.log("raw ref width:", ref.style.width, "raw ref height:", ref.style.height);
+        console.log("raw position:", position);
         isResizing.current = false;
         const newWidth = parseFloat(ref.style.width) / scale;
         const newHeight = parseFloat(ref.style.height) / scale;

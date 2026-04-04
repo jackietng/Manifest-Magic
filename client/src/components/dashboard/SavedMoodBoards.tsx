@@ -1,5 +1,5 @@
 // src/components/dashboard/SavedMoodBoards.tsx
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { supabase } from "../../lib/supabaseClient";
 import { useNavigate } from "react-router-dom";
 import { useTheme } from "../../context/ThemeContext";
@@ -8,135 +8,20 @@ type MoodBoard = {
   id: string;
   name: string;
   created_at: string;
-  board_width: number;
-  board_height: number;
-};
-
-type MoodBoardItem = {
-  type: string;
-  content: string;
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-  zIndex: number;
-};
-
-type PreviewBoard = {
-  board: MoodBoard;
-  items: MoodBoardItem[];
-};
-
-const PROXY_URL = import.meta.env.VITE_PROXY_URL || "http://localhost:5000";
-
-const toBase64 = (url: string): Promise<string> => {
-  return new Promise((resolve) => {
-    const isSupabaseImage = url.includes("supabase.co");
-    const proxyUrl = isSupabaseImage
-      ? url
-      : `${PROXY_URL}/proxy-image?url=${encodeURIComponent(url)}`;
-
-    const img = new Image();
-    img.crossOrigin = "anonymous";
-    img.onload = () => {
-      const canvas = document.createElement("canvas");
-      canvas.width = img.naturalWidth;
-      canvas.height = img.naturalHeight;
-      const ctx = canvas.getContext("2d");
-      ctx?.drawImage(img, 0, 0);
-      try {
-        resolve(canvas.toDataURL("image/jpeg"));
-      } catch {
-        resolve(url);
-      }
-    };
-    img.onerror = () => resolve(url);
-    img.src = proxyUrl;
-  });
-};
-
-const drawBoardToCanvas = async (
-  ctx: CanvasRenderingContext2D,
-  items: MoodBoardItem[],
-  width: number,
-  height: number,
-  isDark: boolean
-) => {
-  ctx.fillStyle = isDark ? "#2a223a" : "#ffffff";
-  ctx.fillRect(0, 0, width, height);
-
-  const sortedItems = [...items].sort((a, b) => a.zIndex - b.zIndex);
-
-  for (const item of sortedItems) {
-    if (item.type === "image") {
-      await new Promise<void>((resolve) => {
-        const img = new Image();
-        img.onload = () => {
-          ctx.drawImage(img, item.x, item.y, item.width, item.height);
-          resolve();
-        };
-        img.onerror = () => resolve();
-        img.src = item.content;
-      });
-    } else {
-      const fontSize = Math.max(12, Math.min(item.width, item.height) * 0.14);
-      ctx.font = `bold ${fontSize}px Inter, sans-serif`;
-      ctx.fillStyle = isDark ? "#f4f1f0" : "#544683";
-      ctx.textAlign = "center";
-      ctx.textBaseline = "middle";
-
-      const words = item.content.split(" ");
-      const lineHeight = fontSize * 1.3;
-      const maxWidth = item.width - 16;
-      const lines: string[] = [];
-      let currentLine = "";
-
-      for (const word of words) {
-        const testLine = currentLine ? `${currentLine} ${word}` : word;
-        const metrics = ctx.measureText(testLine);
-        if (metrics.width > maxWidth && currentLine) {
-          lines.push(currentLine);
-          currentLine = word;
-        } else {
-          currentLine = testLine;
-        }
-      }
-      if (currentLine) lines.push(currentLine);
-
-      const totalHeight = lines.length * lineHeight;
-      const startY = item.y + (item.height - totalHeight) / 2 + lineHeight / 2;
-
-      lines.forEach((line, i) => {
-        ctx.fillText(line, item.x + item.width / 2, startY + i * lineHeight);
-      });
-    }
-  }
+  thumbnail_url: string | null;
 };
 
 export default function SavedMoodBoards({ refreshKey = 0 }: { refreshKey?: number }) {
   const [boards, setBoards] = useState<MoodBoard[]>([]);
   const [loading, setLoading] = useState(true);
-  const [preview, setPreview] = useState<PreviewBoard | null>(null);
-  const [previewReady, setPreviewReady] = useState(false);
-  const [downloading, setDownloading] = useState(false);
-  const previewRef = useRef<HTMLCanvasElement>(null);
   const navigate = useNavigate();
   const { theme } = useTheme();
 
   const isDark = theme === "dark";
   const textColor = isDark ? "var(--snow)" : "var(--primary)";
   const mutedColor = isDark ? "var(--lavender)" : "var(--orchid)";
-  const cardStyle = {
-    backgroundColor: isDark ? "#2a223a" : "var(--snow)",
-    color: textColor,
-    borderColor: isDark ? "var(--violet)" : "var(--plum)",
-  };
-  const modalStyle = {
-    backgroundColor: isDark ? "#1a1428" : "#ffffff",
-    color: textColor,
-  };
-  const btnBase =
-    "px-3 py-1 text-white rounded-lg text-sm hover:opacity-80 transition-opacity";
+  const cardBg = isDark ? "#2a223a" : "var(--snow)";
+  const cardBorder = isDark ? "var(--violet)" : "var(--plum)";
 
   useEffect(() => {
     const fetchBoards = async () => {
@@ -145,7 +30,7 @@ export default function SavedMoodBoards({ refreshKey = 0 }: { refreshKey?: numbe
 
       const { data, error } = await supabase
         .from("moodboards")
-        .select("id, name, created_at, board_width, board_height")
+        .select("id, name, created_at, thumbnail_url")
         .eq("user_id", user.id)
         .order("created_at", { ascending: false });
 
@@ -156,138 +41,11 @@ export default function SavedMoodBoards({ refreshKey = 0 }: { refreshKey?: numbe
     fetchBoards();
   }, [refreshKey]);
 
-  const handlePreview = async (board: MoodBoard) => {
-    setPreview(null);
-    setPreviewReady(false);
-
-    const { data, error } = await supabase
-      .from("moodboard_items")
-      .select("type, content, x, y, width, height, zIndex")
-      .eq("board_id", board.id);
-
-    if (!error && data) {
-      const itemsWithBase64 = await Promise.all(
-        data.map(async (item) => {
-          if (item.type === "image") {
-            const base64 = await toBase64(item.content);
-            return { ...item, content: base64 };
-          }
-          return item;
-        })
-      );
-      setPreview({ board, items: itemsWithBase64 });
-    }
-  };
-
-  const getBoardDimensions = (board: MoodBoard, items: MoodBoardItem[]) => {
-    if (board.board_width && board.board_height) {
-      return { width: board.board_width, height: board.board_height };
-    }
-    if (items.length === 0) return { width: 600, height: 400 };
-    const maxX = Math.max(...items.map((item) => item.x + item.width));
-    const maxY = Math.max(...items.map((item) => item.y + item.height));
-    return {
-      width: Math.max(maxX + 40, 600),
-      height: Math.max(maxY + 40, 400),
-    };
-  };
-
-  const getPreviewScale = (boardWidth: number, boardHeight: number) => {
-    const isMobile = window.innerWidth < 640;
-    // Outer wrapper p-4 (16px each side = 32px) + modal inner p-4 (32px more) = 64px total horiz chrome
-    // Vertical: header ~40px + footer ~44px + grid gaps 24px + modal p-4 top+bottom 32px = ~140px
-    const HORIZ_CHROME = 64;
-    const VERT_CHROME = 140;
-    const availableWidth = isMobile
-      ? window.innerWidth - HORIZ_CHROME
-      : Math.min(window.innerWidth * 0.9, 800) - HORIZ_CHROME;
-    const availableHeight = window.innerHeight * 0.9 - VERT_CHROME;
-    const widthScale = availableWidth / boardWidth;
-    const heightScale = availableHeight / boardHeight;
-    return Math.min(1, widthScale, heightScale);
-  };
-
-  useEffect(() => {
-    if (!preview || !previewRef.current) return;
-
-    const dimensions = getBoardDimensions(preview.board, preview.items);
-    const scale = getPreviewScale(dimensions.width, dimensions.height);
-
-    const canvas = previewRef.current;
-    canvas.width = dimensions.width;
-    canvas.height = dimensions.height;
-
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
-
-    setPreviewReady(false);
-
-    drawBoardToCanvas(ctx, preview.items, dimensions.width, dimensions.height, isDark)
-      .then(() => setPreviewReady(true));
-  }, [preview, isDark]);
-
-  const handleDownload = async () => {
-    if (!preview) return;
-    setDownloading(true);
-
-    try {
-      const dimensions = getBoardDimensions(preview.board, preview.items);
-      const canvas = document.createElement("canvas");
-      canvas.width = dimensions.width;
-      canvas.height = dimensions.height;
-      const ctx = canvas.getContext("2d");
-      if (!ctx) throw new Error("Could not get canvas context");
-
-      await drawBoardToCanvas(ctx, preview.items, dimensions.width, dimensions.height, isDark);
-
-      const dataUrl = canvas.toDataURL("image/jpeg", 0.9);
-      const isMobile = window.innerWidth < 640;
-
-      if (isMobile) {
-        const newTab = window.open();
-        if (newTab) {
-          newTab.document.write(`
-            <html>
-              <head>
-                <meta name="viewport" content="width=device-width, initial-scale=1">
-                <title>${preview.board.name}</title>
-                <style>
-                  body { margin: 0; background: #000; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; }
-                  img { max-width: 100%; height: auto; }
-                  p { color: white; font-family: sans-serif; font-size: 14px; margin-top: 16px; opacity: 0.7; text-align: center; padding: 0 16px; }
-                </style>
-              </head>
-              <body>
-                <img src="${dataUrl}" alt="${preview.board.name}" />
-                <p>Long press the image and tap "Add to Photos" to save it ✨</p>
-              </body>
-            </html>
-          `);
-          newTab.document.close();
-        }
-      } else {
-        const link = document.createElement("a");
-        link.download = `${preview.board.name}.jpg`;
-        link.href = dataUrl;
-        link.click();
-      }
-    } catch (err) {
-      console.error("Download failed:", err);
-      alert("Download failed. Please try again.");
-    }
-
-    setDownloading(false);
-  };
-
-  const handleDelete = async (id: string) => {
+  const handleDelete = async (e: React.MouseEvent, id: string) => {
+    e.stopPropagation();
     if (!confirm("Delete this mood board?")) return;
-
     const { error } = await supabase.from("moodboards").delete().eq("id", id);
-
-    if (!error) {
-      setBoards((prev) => prev.filter((b) => b.id !== id));
-      if (preview?.board.id === id) setPreview(null);
-    }
+    if (!error) setBoards((prev) => prev.filter((b) => b.id !== id));
   };
 
   if (loading)
@@ -297,18 +55,12 @@ export default function SavedMoodBoards({ refreshKey = 0 }: { refreshKey?: numbe
       </p>
     );
 
-  const boardDimensions = preview
-    ? getBoardDimensions(preview.board, preview.items)
-    : null;
-  const previewScale = boardDimensions
-    ? getPreviewScale(boardDimensions.width, boardDimensions.height)
-    : 1;
-
   return (
     <div className="p-6 rounded-2xl">
       <h2 className="text-xl font-semibold mb-4 text-center" style={{ color: textColor }}>
         Saved Mood Boards
       </h2>
+
       {boards.length === 0 ? (
         <div className="flex flex-col items-center gap-4">
           <p className="text-center" style={{ color: textColor }}>
@@ -323,102 +75,55 @@ export default function SavedMoodBoards({ refreshKey = 0 }: { refreshKey?: numbe
           </button>
         </div>
       ) : (
-        <ul className="space-y-3">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
           {boards.map((board) => (
-            <li
-              key={board.id}
-              className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-3 border rounded-xl"
-              style={cardStyle}
-            >
-              <div>
-                <p className="font-medium" style={{ color: textColor }}>{board.name}</p>
-                <p className="text-sm" style={{ color: mutedColor }}>
-                  {new Date(board.created_at).toLocaleDateString()}
-                </p>
-              </div>
-              <div className="flex gap-2 justify-center flex-wrap">
-                <button onClick={() => handlePreview(board)} className={btnBase} style={{ backgroundColor: "var(--rose)" }}>Preview</button>
-                <button onClick={() => navigate(`/moodboard?board=${board.id}`)} className={btnBase} style={{ backgroundColor: "var(--primary)" }}>Edit</button>
-                <button onClick={() => handleDelete(board.id)} className={btnBase} style={{ backgroundColor: "var(--orchid)" }}>Delete</button>
-              </div>
-            </li>
-          ))}
-        </ul>
-      )}
-
-      {preview && boardDimensions && (
-        <div
-          className="fixed inset-0 flex items-center justify-center z-[40] p-4"
-          style={{ backgroundColor: "rgba(0,0,0,0.6)" }}
-          onClick={() => setPreview(null)}
-        >
-          <div
-            className="rounded-2xl shadow-xl p-4 w-full max-w-4xl"
-            style={{
-              ...modalStyle,
-              // Give the modal a fixed height so children can use percentage heights
-              height: "90vh",
-              display: "grid",
-              gridTemplateRows: "auto 1fr auto",
-              gap: "12px",
-            }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* Header */}
-            <div className="flex justify-between items-center">
-              <h3 className="text-lg font-semibold truncate flex-1" style={{ color: textColor }}>
-                {preview.board.name}
-              </h3>
-              <button
-                onClick={() => setPreview(null)}
-                className="text-xl font-bold hover:opacity-60 transition-opacity ml-3 shrink-0"
-                style={{ color: textColor }}
-              >×</button>
-            </div>
-
-            {/*
-              Canvas area — grid row "1fr" means it takes ALL remaining height
-              between header and footer. overflow-hidden clips nothing because
-              the canvas CSS size is already calculated to fit exactly.
-            */}
             <div
-              className="rounded-xl flex items-center justify-center overflow-hidden"
-              style={{
-                backgroundColor: isDark ? "#2a223a" : "#f3f4f6",
-                // min-height so it never collapses on tiny phones
-                minHeight: "120px",
-              }}
+              key={board.id}
+              onClick={() => navigate(`/moodboard?board=${board.id}`)}
+              className="rounded-xl border overflow-hidden cursor-pointer hover:opacity-90 transition-opacity"
+              style={{ backgroundColor: cardBg, borderColor: cardBorder }}
             >
-              {!previewReady && (
-                <p className="text-sm" style={{ color: mutedColor }}>Loading preview...</p>
-              )}
-              {/*
-                canvas.width/height  = full board resolution (drawing coordinates, never touch)
-                style width/height   = CSS display size scaled to fit available space
-                maxWidth/maxHeight   = belt-and-suspenders so it never overflows
-              */}
-              <canvas
-                ref={previewRef}
-                style={{
-                  display: previewReady ? "block" : "none",
-                  width: `${boardDimensions.width * previewScale}px`,
-                  height: `${boardDimensions.height * previewScale}px`,
-                  maxWidth: "100%",
-                  maxHeight: "100%",
-                }}
-              />
-            </div>
+              {/* Thumbnail */}
+              <div
+                className="w-full aspect-[3/4] overflow-hidden"
+                style={{ backgroundColor: isDark ? "#1a1428" : "#f3f0ff" }}
+              >
+                {board.thumbnail_url ? (
+                  <img
+                    src={board.thumbnail_url}
+                    alt={board.name}
+                    className="mood-item-img object-cover"
+                  />
+                ) : (
+                  <div
+                    className="w-full h-full flex items-center justify-center text-3xl"
+                    style={{ color: mutedColor }}
+                  >
+                    ✨
+                  </div>
+                )}
+              </div>
 
-            {/* Footer */}
-            <div className="flex gap-2 justify-center">
-              <button onClick={handleDownload} disabled={downloading || !previewReady} className="flex-1 py-2 text-white rounded-xl hover:opacity-80 transition-opacity disabled:opacity-50 text-sm" style={{ backgroundColor: "var(--rose)" }}>
-                {downloading ? "Downloading..." : "Download"}
-              </button>
-              <button onClick={() => navigate(`/moodboard?board=${preview.board.id}`)} className="flex-1 py-2 text-white rounded-xl hover:opacity-80 transition-opacity text-sm" style={{ backgroundColor: "var(--primary)" }}>Edit</button>
-              <button onClick={() => handleDelete(preview.board.id)} className="flex-1 py-2 text-white rounded-xl hover:opacity-80 transition-opacity text-sm" style={{ backgroundColor: "var(--orchid)" }}>Delete</button>
-              <button onClick={() => setPreview(null)} className="flex-1 py-2 text-white rounded-xl hover:opacity-80 transition-opacity text-sm" style={{ backgroundColor: "var(--plum)" }}>Close</button>
+              {/* Card footer */}
+              <div className="p-2 flex items-center justify-between gap-2">
+                <div className="min-w-0">
+                  <p className="font-medium text-sm truncate" style={{ color: textColor }}>
+                    {board.name || "Untitled"}
+                  </p>
+                  <p className="text-xs" style={{ color: mutedColor }}>
+                    {new Date(board.created_at).toLocaleDateString()}
+                  </p>
+                </div>
+                <button
+                  onClick={(e) => handleDelete(e, board.id)}
+                  className="shrink-0 px-2 py-1 text-white rounded-lg text-xs hover:opacity-80 transition-opacity"
+                  style={{ backgroundColor: "var(--orchid)" }}
+                >
+                  Delete
+                </button>
+              </div>
             </div>
-          </div>
+          ))}
         </div>
       )}
     </div>

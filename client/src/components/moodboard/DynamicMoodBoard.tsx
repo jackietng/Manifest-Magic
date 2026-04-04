@@ -2,6 +2,7 @@
 import { useRef, useState, useEffect, useCallback } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { v4 as uuid } from "uuid";
+import html2canvas from "html2canvas";
 import { supabase } from "../../lib/supabaseClient";
 import MoodItem from "../../components/moodboard/MoodItem";
 import { useTheme } from "../../context/ThemeContext";
@@ -66,7 +67,6 @@ export default function DynamicMoodBoard({
   const [boardReady, setBoardReady] = useState(false);
   const [boardError, setBoardError] = useState("");
   const [boardScale, setBoardScale] = useState(1);
-  const [initialScale, setInitialScale] = useState<number | null>(null);
   const [boardOriginalWidth, setBoardOriginalWidth] = useState<number | null>(null);
   const [boardOriginalHeight, setBoardOriginalHeight] = useState<number | null>(null);
   const [controlsOpen, setControlsOpen] = useState(false);
@@ -89,9 +89,6 @@ export default function DynamicMoodBoard({
 
   useEffect(() => {
     boardScaleRef.current = boardScale;
-    setInitialScale((prev) =>
-      prev !== null && Math.abs(prev - boardScale) < 0.001 ? null : prev
-    );
   }, [boardScale]);
 
   const calculateAndSetScale = useCallback(
@@ -204,7 +201,6 @@ export default function DynamicMoodBoard({
 
         const computedScale = calculateAndSetScale(savedWidth, savedHeight);
         boardScaleRef.current = computedScale;
-        setInitialScale(computedScale);
         setItems(loadedItems);
         setBoardReady(true);
         setBoardLoading(false);
@@ -215,11 +211,9 @@ export default function DynamicMoodBoard({
         }
       };
 
-      // Try immediately first
       if (boardContainerRef.current && boardContainerRef.current.offsetWidth > 0) {
         mountWithStableScale();
       } else {
-        // Wait for container to have real dimensions
         observer = new ResizeObserver(() => {
           mountWithStableScale();
         });
@@ -326,56 +320,101 @@ export default function DynamicMoodBoard({
 
   const clearBoard = () => { if (confirm("Clear the entire board?")) setItems([]); };
 
+  // Captures the live board div as a JPEG blob using html2canvas
+  const captureThumbnail = async (): Promise<Blob | null> => {
+    if (!boardRef.current) return null;
+    try {
+      const boardWidth = boardOriginalWidth || BOARD_MIN_WIDTH;
+      const boardHeight = boardOriginalHeight || BOARD_MIN_HEIGHT;
+
+      // Find the actual content bounds from item positions
+      const contentHeight = items.length > 0
+        ? Math.min(Math.max(...items.map(i => i.y + i.height)), boardHeight)
+        : boardHeight;
+      const contentWidth = items.length > 0
+        ? Math.min(Math.max(...items.map(i => i.x + i.width)), boardWidth)
+        : boardWidth;
+
+      const raw = await html2canvas(boardRef.current, {
+        useCORS: true,
+        allowTaint: false,
+        scale: 1,
+        width: boardWidth,
+        height: boardHeight,
+        scrollX: 0,
+        scrollY: 0,
+        windowWidth: boardWidth,
+        windowHeight: boardHeight,
+        backgroundColor: isDark ? "#2a223a" : "#ffffff",
+        onclone: (_clonedDoc, clonedEl) => {
+          clonedEl.style.transform = "none";
+          clonedEl.style.width = `${boardWidth}px`;
+          clonedEl.style.height = `${boardHeight}px`;
+        },
+      });
+
+      // Crop to content bounds so empty board space isn't included
+      const cropped = document.createElement("canvas");
+      cropped.width = contentWidth;
+      cropped.height = contentHeight;
+      const ctx = cropped.getContext("2d");
+      ctx?.drawImage(raw, 0, 0, contentWidth, contentHeight, 0, 0, contentWidth, contentHeight);
+
+      return await new Promise((resolve) =>
+        cropped.toBlob((blob) => resolve(blob), "image/jpeg", 0.85)
+      );
+    } catch (err) {
+      console.error("Thumbnail capture failed:", err);
+      return null;
+    }
+  };
+
   const handleDownload = async () => {
     if (!boardRef.current) return;
     if (items.length === 0) { alert("Add some items to your board before downloading!"); return; }
     setDownloading(true);
     try {
       if (setSidebarOpen) { setSidebarOpen(false); await new Promise((res) => setTimeout(res, 350)); }
+
       const boardWidth = boardOriginalWidth || BOARD_MIN_WIDTH;
       const boardHeight = boardOriginalHeight || BOARD_MIN_HEIGHT;
-      const itemsWithBase64 = await Promise.all(items.map(async (item) => {
-        if (item.type === "image") return { ...item, content: await toBase64ViaProxy(item.content) };
-        return item;
-      }));
-      const sortedItems = [...itemsWithBase64].sort((a, b) => a.zIndex - b.zIndex);
-      const canvas = document.createElement("canvas");
-      canvas.width = boardWidth; canvas.height = boardHeight;
-      const ctx = canvas.getContext("2d");
-      if (!ctx) throw new Error("Could not get canvas context");
-      ctx.fillStyle = isDark ? "#2a223a" : "#ffffff";
-      ctx.fillRect(0, 0, boardWidth, boardHeight);
-      for (const item of sortedItems) {
-        if (item.type === "image") {
-          await new Promise<void>((resolve) => {
-            const img = new Image();
-            img.onload = () => { ctx.drawImage(img, item.x, item.y, item.width, item.height); resolve(); };
-            img.onerror = () => resolve();
-            img.src = item.content;
-          });
-        } else {
-          const fontSize = Math.max(12, Math.min(item.width, item.height) * 0.14);
-          ctx.font = `bold ${fontSize}px Inter, sans-serif`;
-          ctx.fillStyle = isDark ? "#f4f1f0" : "#544683";
-          ctx.textAlign = "center"; ctx.textBaseline = "middle";
-          const words = item.content.split(" ");
-          const lineHeight = fontSize * 1.3;
-          const maxWidth = item.width - 16;
-          const lines: string[] = [];
-          let currentLine = "";
-          for (const word of words) {
-            const testLine = currentLine ? `${currentLine} ${word}` : word;
-            if (ctx.measureText(testLine).width > maxWidth && currentLine) { lines.push(currentLine); currentLine = word; }
-            else currentLine = testLine;
-          }
-          if (currentLine) lines.push(currentLine);
-          const totalHeight = lines.length * lineHeight;
-          const startY = item.y + (item.height - totalHeight) / 2 + lineHeight / 2;
-          lines.forEach((line, i) => ctx.fillText(line, item.x + item.width / 2, startY + i * lineHeight));
-        }
-      }
-      const dataUrl = canvas.toDataURL("image/jpeg", 0.9);
+
+      // Crop to actual content bounds, capped at board size
+      const contentWidth = items.length > 0
+        ? Math.min(Math.max(...items.map(i => i.x + i.width)), boardWidth)
+        : boardWidth;
+      const contentHeight = items.length > 0
+        ? Math.min(Math.max(...items.map(i => i.y + i.height)), boardHeight)
+        : boardHeight;
+
+      const raw = await html2canvas(boardRef.current, {
+        useCORS: true,
+        allowTaint: false,
+        scale: 1,
+        width: boardWidth,
+        height: boardHeight,
+        scrollX: 0,
+        scrollY: 0,
+        windowWidth: boardWidth,
+        windowHeight: boardHeight,
+        backgroundColor: isDark ? "#2a223a" : "#ffffff",
+        onclone: (_clonedDoc, clonedEl) => {
+          clonedEl.style.transform = "none";
+          clonedEl.style.width = `${boardWidth}px`;
+          clonedEl.style.height = `${boardHeight}px`;
+        },
+      });
+
+      // Crop to content bounds
+      const cropped = document.createElement("canvas");
+      cropped.width = contentWidth;
+      cropped.height = contentHeight;
+      const ctx = cropped.getContext("2d");
+      ctx?.drawImage(raw, 0, 0, contentWidth, contentHeight, 0, 0, contentWidth, contentHeight);
+
+      const dataUrl = cropped.toDataURL("image/jpeg", 0.9);
       const isMobile = window.innerWidth < 640;
+
       if (isMobile) {
         const newTab = window.open();
         if (newTab) {
@@ -384,13 +423,25 @@ export default function DynamicMoodBoard({
         }
       } else {
         const link = document.createElement("a");
-        link.download = `${boardName}.jpg`; link.href = dataUrl; link.click();
+        link.download = `${boardName}.jpg`;
+        link.href = dataUrl;
+        link.click();
       }
     } catch (err) { console.error("Download failed:", err); alert("Download failed. Please try again."); }
     setDownloading(false);
   };
 
   const handleSave = async () => {
+      console.log("items at save:", JSON.stringify(items.map(i => ({
+        type: i.type,
+        x: Math.round(i.x),
+        y: Math.round(i.y),
+        w: Math.round(i.width),
+        h: Math.round(i.height),
+        right: Math.round(i.x + i.width),
+        bottom: Math.round(i.y + i.height),
+      }))));
+      console.log("board size:", boardOriginalWidth, "x", boardOriginalHeight);
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
       localStorage.setItem(
@@ -402,18 +453,52 @@ export default function DynamicMoodBoard({
     }
     if (items.length === 0) { alert("Add some items to your board before saving!"); return; }
     setSaving(true);
+
     const savedWidth = boardOriginalWidth || BOARD_MIN_WIDTH;
     const savedHeight = boardOriginalHeight || BOARD_MIN_HEIGHT;
+
+    // 1. Insert the board row
     const { data: board, error: boardError } = await supabase
       .from("moodboards")
       .insert([{ user_id: user.id, name: boardName, mood: mood || "", board_width: savedWidth, board_height: savedHeight }])
       .select().single();
+
     if (boardError) { console.error(boardError); alert("Failed to save board. Please try again."); setSaving(false); return; }
+
+    // 2. Insert board items
     const { error: itemError } = await supabase.from("moodboard_items").insert(
       items.map((item) => ({ board_id: board.id, type: item.type, content: item.content, x: item.x, y: item.y, width: item.width, height: item.height, zIndex: item.zIndex }))
     );
-    if (itemError) { console.error(itemError); alert("Failed to save board items. Please try again."); }
-    else { setSaved(true); setTimeout(() => setSaved(false), 2000); }
+
+    if (itemError) {
+      console.error(itemError);
+      alert("Failed to save board items. Please try again.");
+      setSaving(false);
+      return;
+    }
+
+    // 3. Capture thumbnail and upload to storage
+    const thumbnail = await captureThumbnail();
+    if (thumbnail) {
+      const thumbFileName = `thumbnail-${board.id}.jpg`;
+      const { error: thumbUploadError } = await supabase.storage
+        .from("moodboard-images")
+        .upload(thumbFileName, thumbnail, { contentType: "image/jpeg", upsert: true });
+
+      if (!thumbUploadError) {
+        const { data: { publicUrl } } = supabase.storage
+          .from("moodboard-images")
+          .getPublicUrl(thumbFileName);
+
+        await supabase
+          .from("moodboards")
+          .update({ thumbnail_url: publicUrl })
+          .eq("id", board.id);
+      }
+    }
+
+    setSaved(true);
+    setTimeout(() => setSaved(false), 2000);
     setSaving(false);
   };
 
@@ -494,7 +579,7 @@ export default function DynamicMoodBoard({
         </div>
       )}
 
-      <div style={{ 
+      <div style={{
         visibility: boardLoading ? "hidden" : "visible",
         pointerEvents: boardLoading ? "none" : "auto",
       }}>
@@ -547,7 +632,7 @@ export default function DynamicMoodBoard({
                   key={item.id} item={item}
                   onChange={updateItem} onRemove={removeItem}
                   onBringToFront={bringToFront} onSendToBack={sendToBack}
-                  scale={initialScale ?? boardScale}
+                  scale={boardScale}
                 />
               ))}
               {saved && (

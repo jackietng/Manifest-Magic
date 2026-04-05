@@ -89,6 +89,7 @@ export default function MoodItem({
   const leaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isDragging = useRef(false);
   const isResizing = useRef(false);
+  const isActive = isDragging.current || isResizing.current;
   const touchDevice = isTouchDevice();
   const showControls = touchDevice ? selected : hovered;
 
@@ -100,7 +101,7 @@ export default function MoodItem({
       setPos({ x: item.x, y: item.y });
       setSize({ width: item.width, height: item.height });
     }
-  }, [item.x, item.y, item.width, item.height]);
+  }, [item.x, item.y, item.width, item.height, scale]);
 
   useEffect(() => {
     if (!touchDevice || !selected) return;
@@ -178,12 +179,20 @@ export default function MoodItem({
   const overlayBtnPadding = touchDevice ? "8px 12px" : "2px 5px";
   const overlayBtnFontSize = touchDevice ? "13px" : "9px";
 
-  const scaledPos = { x: pos.x * scale, y: pos.y * scale };
-  const scaledSize = { width: size.width * scale, height: size.height * scale };
+  // During drag/resize use local state; otherwise always derive from props
+  // This ensures scale changes from parent always reflect correctly
+  const sourceX = isActive ? pos.x : item.x;
+  const sourceY = isActive ? pos.y : item.y;
+  const sourceW = isActive ? size.width : item.width;
+  const sourceH = isActive ? size.height : item.height;
+  const scaledPos = { x: sourceX * scale, y: sourceY * scale };
+  const scaledSize = { width: sourceW * scale, height: sourceH * scale };
 
   const bar = (dir: "top" | "bottom" | "left" | "right" | "corner") => (
     <BarHandle direction={dir} visible={showControls} touchDevice={touchDevice} />
   );
+
+  console.log(`item ${item.id.slice(0,6)} | item.x:${item.x} item.y:${item.y} | scale:${scale} | scaledPos:`, scaledPos);
 
   return (
     <Rnd

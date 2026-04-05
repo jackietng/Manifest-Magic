@@ -201,6 +201,10 @@ export default function DynamicMoodBoard({
 
         const computedScale = calculateAndSetScale(savedWidth, savedHeight);
         boardScaleRef.current = computedScale;
+        console.log("Mobile load — computedScale:", computedScale);
+        console.log("Container width:", containerWidth);
+        console.log("Saved dimensions:", savedWidth, "x", savedHeight);
+        console.log("First item raw:", loadedItems[0]);
         setItems(loadedItems);
         setBoardReady(true);
         setBoardLoading(false);
